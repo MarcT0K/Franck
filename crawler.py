@@ -14,18 +14,30 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
-from csv import DictWriter
+import fileinput
+from csv import DictWriter, DictReader
 
 import aiohttp
 from tqdm.asyncio import tqdm
 
 INSTANCE_CSV_FIELDS = [
     "host",
+    "totalUsers",
+    "totalDailyActiveUsers",
+    "totalWeeklyActiveUsers",
+    "totalMonthlyActiveUsers",
+    "totalLocalVideos",
+    "totalLocalVideoViews",
+    "totalVideos",
+    "totalInstanceFollowers",
+    "totalInstanceFollowing",
+    "totalLocalPlaylists",
+    "totalVideoComments",
 ]
-# https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats
-# https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows
 
 FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
+INSTANCES_FILENAME = "instances.csv"
+FOLLOWERS_FILENAME = "followers.csv"
 
 
 class CrawlerException(Exception):
@@ -45,11 +57,11 @@ class PeertubeCrawler:
         self.info_csv_lock = asyncio.Lock()
         self.link_csv_lock = asyncio.Lock()
 
-        with open("instances.csv", "a", encoding="utf-8") as csv_file:
+        with open(INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=INSTANCE_CSV_FIELDS)
             writer.writeheader()
 
-        with open("followers.csv", "a", encoding="utf-8") as csv_file:
+        with open(FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=FOLLOWERS_CSV_FIELDS)
             writer.writeheader()
 
@@ -65,77 +77,109 @@ class PeertubeCrawler:
     async def fetch_instance_list(
         self, url="https://index.kraut.zone/api/v1/instances/hosts"
     ):
-        async with self.session.get(url) as resp:
-            if resp.status != 200:
-                print(
-                    f"Failed to fetch the instance list from {url} (code {resp.status})"
-                )
-            else:
-                instances = await resp.json()
-                self.urls = [instance["host"] for instance in instances["data"]]
+        instances = await self._fetch_json(url)
+        self.urls = [instance["host"] for instance in instances["data"]]
 
     async def _fetch_json(self, url):
         async with self.session.get(url) as resp:
             if resp.status != 200:
-                raise CrawlerException("Error code " + str(resp.status))
+                raise CrawlerException(f"Error code {str(resp.status)} on URL: {url}")
             return await resp.json()
 
-    async def inspect_instance(self, url):
-        instance_dict = {"host": url}
+    async def inspect_instance(self, host):
+        instance_dict = {"host": host}
+        follower_links = []
         try:
             # Fetch instance info
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats/operation/getInstanceStats
-            info_dict = await self._fetch_json("http://" + url + "/api/v1/server/stats")
+            info_dict = await self._fetch_json(
+                "http://" + host + "/api/v1/server/stats"
+            )
+            info_dict = {
+                key: val for key, val in info_dict.items() if key in INSTANCE_CSV_FIELDS
+            }
+            instance_dict.update(info_dict)
 
             # Fetch instance followers
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
             followers_dict = await self._fetch_json(
-                "http://" + url + "/api/v1/server/followers"
+                "http://" + host + "/api/v1/server/followers"
             )
+            for link_dict in followers_dict["data"].values():
+                if link_dict["follower"]["name"] == "peertube":
+                    # We avoid Mastodon followers
+                    follower_links.append(link_dict["follower"], host)
 
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
-            followee_dict = await self._fetch_json(
-                "http://" + url + "/api/v1/server/following"
+            followees_dict = await self._fetch_json(
+                "http://" + host + "/api/v1/server/following"
             )
+            for link_dict in followees_dict["data"].values():
+                if link_dict["following"]["name"] == "peertube":
+                    # We avoid Mastodon followers
+                    follower_links.append(host, link_dict["following"])
 
         except (aiohttp.ClientError, CrawlerException) as err:
             instance_dict["error"] = str(err)
 
         async with self.info_csv_lock:
-            with open("instances.csv", "a", encoding="utf-8") as csv_file:
+            with open(INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=INSTANCE_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
         async with self.link_csv_lock:
-            with open("followers.csv", "a", encoding="utf-8") as csv_file:
+            with open(FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=FOLLOWERS_CSV_FIELDS)
-                writer.writerow(instance_dict)
+                for source, dest in follower_links:
+                    writer.writerow({"Source": source, "Target": dest})
 
-    async def check_unknown_urls_in_csv(self):
-        raise NotImplementedError
+    def check_unknown_urls_in_csv(self):
+        crawled = set()
+        with open(INSTANCES_FILENAME, encoding="utf-8") as csvfile:
+            data = DictReader(csvfile)
+            for row in data:
+                crawled.add(row["host"])
+
+        from_links = set()
+        with open(FOLLOWERS_FILENAME, encoding="utf-8") as csvfile:
+            data = DictReader(csvfile)
+            for row in data:
+                from_links.add(row["Source"])
+                from_links.add(row["Target"])
+
+        return list(from_links - crawled)
 
     def drop_duplicate_followers(self):
-        raise NotImplementedError
+        seen = set()
+        for line in fileinput.FileInput(FOLLOWERS_FILENAME, inplace=True):
+            prev_len = len(seen)
+            seen.add(line)
+            if len(seen) > prev_len:
+                print(line, end="")
 
     async def launch(self):
         if not self.urls:
-            print("No urls to crawl")
+            raise CrawlerException("No URL to crawl")
 
         crawl_done = False
-        current_depth = 0
+        current_depth = 1
 
+        print("Crawl begins...")
         while not crawl_done:
+            print("Crawling round ", current_depth)
             tasks = [self.inspect_instance(url) for url in self.urls]
 
             for task in tqdm.as_completed(tasks):
                 await task
 
-            self.urls = await self.check_unknown_urls_in_csv()
-            current_depth += 1
+            self.drop_duplicate_followers()
+            self.urls = self.check_unknown_urls_in_csv()
 
             if len(self.urls) == 0 or current_depth == self.max_crawl_depth:
                 crawl_done = True
+            current_depth += 1
+        print("Crawl completed!!!")
 
     async def close(self):
         await self.session.close()
