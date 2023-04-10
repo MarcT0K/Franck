@@ -15,6 +15,7 @@
 
 import asyncio
 import fileinput
+import json
 from csv import DictWriter, DictReader
 
 import aiohttp
@@ -30,9 +31,12 @@ INSTANCE_CSV_FIELDS = [
     "totalLocalVideoViews",
     "totalVideos",
     "totalInstanceFollowers",
+    "totalPeertubeInstanceFollowers",
     "totalInstanceFollowing",
+    "totalPeertubeInstanceFollowing",
     "totalLocalPlaylists",
     "totalVideoComments",
+    "error",
 ]
 
 FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
@@ -57,11 +61,11 @@ class PeertubeCrawler:
         self.info_csv_lock = asyncio.Lock()
         self.link_csv_lock = asyncio.Lock()
 
-        with open(INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+        with open(INSTANCES_FILENAME, "w", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=INSTANCE_CSV_FIELDS)
             writer.writeheader()
 
-        with open(FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+        with open(FOLLOWERS_FILENAME, "w", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=FOLLOWERS_CSV_FIELDS)
             writer.writeheader()
 
@@ -81,10 +85,21 @@ class PeertubeCrawler:
         self.urls = [instance["host"] for instance in instances["data"]]
 
     async def _fetch_json(self, url):
-        async with self.session.get(url) as resp:
-            if resp.status != 200:
-                raise CrawlerException(f"Error code {str(resp.status)} on URL: {url}")
-            return await resp.json()
+        try:
+            async with self.session.get(url, timeout=300) as resp:
+                if resp.status != 200:
+                    raise CrawlerException(f"Error code {str(resp.status)} on {url}")
+                data = await resp.read()
+                try:
+                    return json.loads(data)
+                except (json.JSONDecodeError, UnicodeDecodeError) as err:
+                    raise CrawlerException(
+                        f"Cannot decode JSON on {url} ({err})"
+                    ) from err
+        except aiohttp.ClientError as err:
+            raise CrawlerException(f"{err}") from err
+        except asyncio.TimeoutError as err:
+            raise CrawlerException(f"Connection to {url} timed out") from err
 
     async def inspect_instance(self, host):
         instance_dict = {"host": host}
@@ -105,22 +120,26 @@ class PeertubeCrawler:
             followers_dict = await self._fetch_json(
                 "http://" + host + "/api/v1/server/followers"
             )
-            for link_dict in followers_dict["data"].values():
+            for link_dict in followers_dict["data"]:
                 if link_dict["follower"]["name"] == "peertube":
                     # We avoid Mastodon followers
-                    follower_links.append(link_dict["follower"], host)
+                    follower_links.append((link_dict["follower"]["host"], host))
+            instance_dict["totalPeertubeInstanceFollowers"] = len(follower_links)
 
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
             followees_dict = await self._fetch_json(
                 "http://" + host + "/api/v1/server/following"
             )
-            for link_dict in followees_dict["data"].values():
+            for link_dict in followees_dict["data"]:
                 if link_dict["following"]["name"] == "peertube":
                     # We avoid Mastodon followers
-                    follower_links.append(host, link_dict["following"])
+                    follower_links.append((host, link_dict["following"]["host"]))
+            instance_dict["totalPeertubeInstanceFollowing"] = (
+                len(follower_links) - instance_dict["totalPeertubeInstanceFollowers"]
+            )
 
-        except (aiohttp.ClientError, CrawlerException) as err:
+        except CrawlerException as err:
             instance_dict["error"] = str(err)
 
         async with self.info_csv_lock:
