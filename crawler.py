@@ -37,8 +37,9 @@ INSTANCE_CSV_FIELDS = [
     "totalLocalPlaylists",
     "totalVideoComments",
     "error",
+    "Id",
+    "Label",
 ]
-
 FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
 INSTANCES_FILENAME = "instances.csv"
 FOLLOWERS_FILENAME = "followers.csv"
@@ -84,9 +85,9 @@ class PeertubeCrawler:
         instances = await self._fetch_json(url)
         self.urls = [instance["host"] for instance in instances["data"]]
 
-    async def _fetch_json(self, url):
+    async def _fetch_json(self, url, params=None):
         try:
-            async with self.session.get(url, timeout=300) as resp:
+            async with self.session.get(url, timeout=300, params=params) as resp:
                 if resp.status != 200:
                     raise CrawlerException(f"Error code {str(resp.status)} on {url}")
                 data = await resp.read()
@@ -117,24 +118,36 @@ class PeertubeCrawler:
 
             # Fetch instance followers
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
-            followers_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/followers"
+            followees_dict = await self._fetch_json(
+                "http://" + host + "/api/v1/server/followers",
             )
-            for link_dict in followers_dict["data"]:
-                if link_dict["follower"]["name"] == "peertube":
-                    # We avoid Mastodon followers
-                    follower_links.append((link_dict["follower"]["host"], host))
+            instance_dict["totalInstanceFollowers"] = followees_dict["total"]
+            for i in range(0, instance_dict["totalInstanceFollowers"], 100):
+                followers_dict = await self._fetch_json(
+                    "http://" + host + "/api/v1/server/followers",
+                    params={"count": 100, "start": i},
+                )
+                for link_dict in followers_dict["data"]:
+                    if link_dict["follower"]["name"] == "peertube":
+                        # We avoid Mastodon followers
+                        follower_links.append((link_dict["follower"]["host"], host))
             instance_dict["totalPeertubeInstanceFollowers"] = len(follower_links)
 
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
             followees_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/following"
+                "http://" + host + "/api/v1/server/following",
             )
-            for link_dict in followees_dict["data"]:
-                if link_dict["following"]["name"] == "peertube":
-                    # We avoid Mastodon followers
-                    follower_links.append((host, link_dict["following"]["host"]))
+            instance_dict["totalInstanceFollowing"] = followees_dict["total"]
+            for i in range(0, instance_dict["totalInstanceFollowing"], 100):
+                followees_dict = await self._fetch_json(
+                    "http://" + host + "/api/v1/server/following",
+                    params={"count": 100, "start": i},
+                )
+                for link_dict in followees_dict["data"]:
+                    if link_dict["following"]["name"] == "peertube":
+                        # We avoid Mastodon followers
+                        follower_links.append((host, link_dict["following"]["host"]))
             instance_dict["totalPeertubeInstanceFollowing"] = (
                 len(follower_links) - instance_dict["totalPeertubeInstanceFollowers"]
             )
@@ -177,6 +190,34 @@ class PeertubeCrawler:
             if len(seen) > prev_len:
                 print(line, end="")
 
+    def data_cleaning(self):
+        working_instances = set()
+        with open(INSTANCES_FILENAME, encoding="utf-8") as rawfile, open(
+            "clean_" + INSTANCES_FILENAME, "w", encoding="utf-8"
+        ) as cleanfile:
+            data = DictReader(rawfile)
+            writer = DictWriter(cleanfile, fieldnames=INSTANCE_CSV_FIELDS)
+            writer.writeheader()
+            for row in data:
+                if row["error"] == "":
+                    working_instances.add(row["host"])
+                    row["Id"] = row["host"]
+                    row["Label"] = row["host"]
+                    writer.writerow(row)
+
+        with open(FOLLOWERS_FILENAME, encoding="utf-8") as rawfile, open(
+            "clean_" + FOLLOWERS_FILENAME, "w", encoding="utf-8"
+        ) as cleanfile:
+            data = DictReader(rawfile)
+            writer = DictWriter(cleanfile, fieldnames=FOLLOWERS_CSV_FIELDS)
+            writer.writeheader()
+            for row in data:
+                if (
+                    row["Source"] in working_instances
+                    and row["Target"] in working_instances
+                ):
+                    writer.writerow(row)
+
     async def launch(self):
         if not self.urls:
             raise CrawlerException("No URL to crawl")
@@ -199,6 +240,9 @@ class PeertubeCrawler:
                 crawl_done = True
             current_depth += 1
         print("Crawl completed!!!")
+        print("Cleaning the data...")
+        self.data_cleaning()
+        print("Done.")
 
     async def close(self):
         await self.session.close()
