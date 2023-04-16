@@ -12,7 +12,7 @@ By default, the crawl starts from the instance list of <https://index.kraut.zone
 
 ## About the output
 
-The crawl outputs raw and cleaned CSV files. The file `instances.csv` contains information about the instances (views, users, videos, etc.). If you would like additional information about the information, check the [API documentation](https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats) and submit a PR/issue. The file `followers.csv` contains the follower links. It can be loaded on the graph visualizer [Gephi](https://gephi.org/). In `instances.csv`, I duplicated the column `host` in `Id` and `Label` to use this file as a node table in Gephi.
+The crawl outputs raw and cleaned CSV files. The file `instances.csv` contains information about the instances (views, users, videos, etc.). If you would like additional information about the instances, check the [API documentation](https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats) and submit a PR/issue. The file `followers.csv` contains the follower links. It can be loaded on the graph visualizer [Gephi](https://gephi.org/). In `instances.csv`, I duplicated the column `host` in `Id` and `Label` to use this file as a node table in Gephi.
 
 Along with these two files, the script provides `clean_instances.csv` and `clean_followers.csv`, which only includes the working instances.
 
