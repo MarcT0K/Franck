@@ -1,3 +1,5 @@
+"Base crawler classes"
+
 import asyncio
 import json
 import os
@@ -5,13 +7,15 @@ import os
 from abc import abstractmethod
 from csv import DictWriter, DictReader
 from datetime import datetime
-from typing import Optional, List, Mapping
+from typing import Optional, List, Mapping, Dict, Any
 
 import aiohttp
 from tqdm.asyncio import tqdm
 
 
 class CrawlerException(Exception):
+    """Base exception class for the crawlers"""
+
     def __init__(self, err):
         self.msg = err
 
@@ -20,6 +24,13 @@ class CrawlerException(Exception):
 
 
 class FederationCrawler:
+    """Abstract class for crawler exploring a federation of instances.
+
+    This crawler works for Fediverse projects where instances are explicitly
+    interconnected (e.g., Lemmy or Peertube). Hence, this graph depends on
+    instance configuration and not on the user activity.
+    """
+
     SOFTWARE = NotImplementedError
     INSTANCES_FILENAME = "instances.csv"
     FOLLOWERS_FILENAME = "followers.csv"
@@ -52,13 +63,26 @@ class FederationCrawler:
         self.session = aiohttp.ClientSession()
         self.max_crawl_depth = crawl_depth
 
-        if first_urls is None:
-            self.urls = []
-        else:
+        self.urls = []
+        if first_urls is not None:
             assert isinstance(first_urls, list)
             self.urls = first_urls
 
-    async def _fetch_json(self, url: str, params: Optional[Mapping[str, str]] = None):
+    async def _fetch_json(
+        self, url: str, params: Optional[Mapping[str, str]] = None
+    ) -> Dict[str, Any]:
+        """Query an instance API and returns the resulting JSON.
+
+        Args:
+            url (str): URL of the API endpoint
+            params (Optional[Mapping[str, str]], optional): parameters of the HTTP query. Defaults to None.
+
+        Raises:
+            CrawlerException: if the HTTP request fails.
+
+        Returns:
+            Dict: dictionary containing the JSON response.
+        """
         try:
             async with self.session.get(url, timeout=300, params=params) as resp:
                 if resp.status != 200:
@@ -74,16 +98,35 @@ class FederationCrawler:
             raise CrawlerException(f"{err}") from err
         except asyncio.TimeoutError as err:
             raise CrawlerException(f"Connection to {url} timed out") from err
+        except ValueError as err:
+            if err.args[0] == "Can redirect only to http or https":
+                raise CrawlerException("Invalid redirect") from err
+            raise
 
     @abstractmethod
     async def fetch_instance_list(self, url: str):
+        """Fetch a list of instances provided by a public database.
+
+        Args:
+            url (str): URL of the public database
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def inspect_instance(self, host: str):
+        """Fetches the instance information and the list of connected instances.
+
+        Args:
+            host (str): Hostname of the instance
+        """
         raise NotImplementedError
 
-    def check_unknown_urls_in_csv(self):
+    def check_unknown_urls_in_csv(self) -> List[str]:
+        """Extract the unexplored instances from the CSV files.
+
+        Returns:
+            List[str]: a list of instance hostnames
+        """
         crawled = set()
         with open(self.INSTANCES_FILENAME, encoding="utf-8") as csvfile:
             data = DictReader(csvfile)
@@ -101,9 +144,11 @@ class FederationCrawler:
 
     @abstractmethod
     def post_round_cleaning(self):
+        """Clean the CSV files after a crawling round."""
         raise NotImplementedError
 
     def data_cleaning(self):
+        """Clean the final result file."""
         working_instances = set()
         with open(self.INSTANCES_FILENAME, encoding="utf-8") as rawfile, open(
             "clean_" + self.INSTANCES_FILENAME, "w", encoding="utf-8"
@@ -132,6 +177,8 @@ class FederationCrawler:
                     writer.writerow(row)
 
     async def launch(self):
+        """Launch the crawl"""
+
         if not self.urls:
             raise CrawlerException("No URL to crawl")
 

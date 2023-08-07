@@ -1,3 +1,5 @@
+"Peertube graph crawler"
+
 import asyncio
 import fileinput
 
