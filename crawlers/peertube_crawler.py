@@ -26,6 +26,7 @@ class PeertubeCrawler(FederationCrawler):
         "totalVideoComments",
         "totalLocalVideoComments",
         "totalLocalVideoViews",
+        "serverVersion",
         "error",
         "Id",
         "Label",
@@ -52,6 +53,9 @@ class PeertubeCrawler(FederationCrawler):
                 if key in self.INSTANCE_CSV_FIELDS
             }
             instance_dict.update(info_dict)
+
+            config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
+            instance_dict["serverVersion"] = config_dict["server_version"]
 
             # Fetch instance followers
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
@@ -105,6 +109,8 @@ class PeertubeCrawler(FederationCrawler):
 
     def post_round_cleaning(self):
         seen = set()
+
+        # Remove duplicate rows
         for line in fileinput.FileInput(self.FOLLOWERS_FILENAME, inplace=True):
             prev_len = len(seen)
             seen.add(line)

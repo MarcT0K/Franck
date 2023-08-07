@@ -142,10 +142,9 @@ class FederationCrawler:
 
         return list(from_links - crawled)
 
-    @abstractmethod
     def post_round_cleaning(self):
         """Clean the CSV files after a crawling round."""
-        raise NotImplementedError
+        pass
 
     def data_cleaning(self):
         """Clean the final result file."""
