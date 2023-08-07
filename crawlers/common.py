@@ -1,9 +1,10 @@
 import asyncio
-import fileinput
 import json
 import os
 
+from abc import abstractmethod
 from csv import DictWriter, DictReader
+from datetime import datetime
 from typing import Optional, List, Mapping
 
 import aiohttp
@@ -22,17 +23,23 @@ class FederationCrawler:
     SOFTWARE = NotImplementedError
     INSTANCES_FILENAME = "instances.csv"
     FOLLOWERS_FILENAME = "followers.csv"
-    FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
-    INSTANCE_CSV_FIELDS: Optional[List] = None
+    FOLLOWERS_CSV_FIELDS = ["Source", "Target", "Weight"]
+    INSTANCE_CSV_FIELDS: Optional[List[str]] = None
 
     def __init__(
         self,
         first_urls: List[str] = None,
         crawl_depth: int = -1,
     ):
+        # Create the result folder
+        result_dir = self.SOFTWARE + "_" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        os.mkdir(result_dir)
+        os.chdir(result_dir)
+
         self.info_csv_lock = asyncio.Lock()
         self.link_csv_lock = asyncio.Lock()
 
+        # Initialize the result CSV files
         with open(self.INSTANCES_FILENAME, "w", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
             writer.writeheader()
@@ -41,6 +48,7 @@ class FederationCrawler:
             writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
             writer.writeheader()
 
+        # Initialize the HTTP session
         self.session = aiohttp.ClientSession()
         self.max_crawl_depth = crawl_depth
 
@@ -49,12 +57,6 @@ class FederationCrawler:
         else:
             assert isinstance(first_urls, list)
             self.urls = first_urls
-
-    async def fetch_instance_list(
-        self, url: str = "https://index.kraut.zone/api/v1/instances/hosts"
-    ):
-        instances = await self._fetch_json(url)
-        self.urls = [instance["host"] for instance in instances["data"]]
 
     async def _fetch_json(self, url: str, params: Optional[Mapping[str, str]] = None):
         try:
@@ -73,71 +75,13 @@ class FederationCrawler:
         except asyncio.TimeoutError as err:
             raise CrawlerException(f"Connection to {url} timed out") from err
 
+    @abstractmethod
+    async def fetch_instance_list(self, url: str):
+        raise NotImplementedError
+
+    @abstractmethod
     async def inspect_instance(self, host: str):
-        instance_dict = {"host": host}
-        follower_links = []
-        try:
-            # Fetch instance info
-            # https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats/operation/getInstanceStats
-            info_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/stats"
-            )
-            info_dict = {
-                key: val
-                for key, val in info_dict.items()
-                if key in self.INSTANCE_CSV_FIELDS
-            }
-            instance_dict.update(info_dict)
-
-            # Fetch instance followers
-            # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
-            followees_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/followers",
-            )
-            instance_dict["totalInstanceFollowers"] = followees_dict["total"]
-            for i in range(0, instance_dict["totalInstanceFollowers"], 100):
-                followers_dict = await self._fetch_json(
-                    "http://" + host + "/api/v1/server/followers",
-                    params={"count": 100, "start": i},
-                )
-                for link_dict in followers_dict["data"]:
-                    if link_dict["follower"]["name"] == "peertube":
-                        # We avoid Mastodon followers
-                        follower_links.append((link_dict["follower"]["host"], host))
-            instance_dict["totalPeertubeInstanceFollowers"] = len(follower_links)
-
-            # Fetch instance followees
-            # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
-            followees_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/following",
-            )
-            instance_dict["totalInstanceFollowing"] = followees_dict["total"]
-            for i in range(0, instance_dict["totalInstanceFollowing"], 100):
-                followees_dict = await self._fetch_json(
-                    "http://" + host + "/api/v1/server/following",
-                    params={"count": 100, "start": i},
-                )
-                for link_dict in followees_dict["data"]:
-                    if link_dict["following"]["name"] == "peertube":
-                        # We avoid Mastodon followers
-                        follower_links.append((host, link_dict["following"]["host"]))
-            instance_dict["totalPeertubeInstanceFollowing"] = (
-                len(follower_links) - instance_dict["totalPeertubeInstanceFollowers"]
-            )
-
-        except CrawlerException as err:
-            instance_dict["error"] = str(err)
-
-        async with self.info_csv_lock:
-            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
-                writer.writerow(instance_dict)
-
-        async with self.link_csv_lock:
-            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-                for source, dest in follower_links:
-                    writer.writerow({"Source": source, "Target": dest})
+        raise NotImplementedError
 
     def check_unknown_urls_in_csv(self):
         crawled = set()
@@ -155,13 +99,9 @@ class FederationCrawler:
 
         return list(from_links - crawled)
 
-    def drop_duplicate_followers(self):
-        seen = set()
-        for line in fileinput.FileInput(self.FOLLOWERS_FILENAME, inplace=True):
-            prev_len = len(seen)
-            seen.add(line)
-            if len(seen) > prev_len:
-                print(line, end="")
+    @abstractmethod
+    def post_round_cleaning(self):
+        raise NotImplementedError
 
     def data_cleaning(self):
         working_instances = set()
@@ -206,7 +146,7 @@ class FederationCrawler:
             for task in tqdm.as_completed(tasks):
                 await task
 
-            self.drop_duplicate_followers()
+            self.post_round_cleaning()
             self.urls = self.check_unknown_urls_in_csv()
 
             if len(self.urls) == 0 or current_depth == self.max_crawl_depth:
