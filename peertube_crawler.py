@@ -1,4 +1,4 @@
-# Copyright (C) 2023  Marc "TOK_" D.
+# Copyright (C) 2023  Marc "TOK_" Damie
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 import asyncio
 import fileinput
 import json
+import os
+
 from csv import DictWriter, DictReader
 
 import aiohttp
