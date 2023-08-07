@@ -1,51 +1,13 @@
-# Copyright (C) 2023  Marc "TOK_" Damie
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import asyncio
 import fileinput
 import json
 import os
 
 from csv import DictWriter, DictReader
+from typing import Optional, List, Mapping
 
 import aiohttp
 from tqdm.asyncio import tqdm
-
-INSTANCE_CSV_FIELDS = [
-    "host",
-    "totalUsers",
-    "totalDailyActiveUsers",
-    "totalWeeklyActiveUsers",
-    "totalMonthlyActiveUsers",
-    "totalLocalVideos",
-    "totalVideos",
-    "totalInstanceFollowers",
-    "totalPeertubeInstanceFollowers",
-    "totalInstanceFollowing",
-    "totalPeertubeInstanceFollowing",
-    "totalLocalPlaylists",
-    "totalVideoComments",
-    "totalLocalVideoComments",
-    "totalLocalVideoViews",
-    "error",
-    "Id",
-    "Label",
-]
-FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
-INSTANCES_FILENAME = "instances.csv"
-FOLLOWERS_FILENAME = "followers.csv"
 
 
 class CrawlerException(Exception):
@@ -56,21 +18,27 @@ class CrawlerException(Exception):
         return self.msg
 
 
-class PeertubeCrawler:
+class FederationCrawler:
+    SOFTWARE = NotImplementedError
+    INSTANCES_FILENAME = "instances.csv"
+    FOLLOWERS_FILENAME = "followers.csv"
+    FOLLOWERS_CSV_FIELDS = ["Source", "Target"]
+    INSTANCE_CSV_FIELDS: Optional[List] = None
+
     def __init__(
         self,
-        first_urls=None,
-        crawl_depth=-1,
+        first_urls: List[str] = None,
+        crawl_depth: int = -1,
     ):
         self.info_csv_lock = asyncio.Lock()
         self.link_csv_lock = asyncio.Lock()
 
-        with open(INSTANCES_FILENAME, "w", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=INSTANCE_CSV_FIELDS)
+        with open(self.INSTANCES_FILENAME, "w", encoding="utf-8") as csv_file:
+            writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
             writer.writeheader()
 
-        with open(FOLLOWERS_FILENAME, "w", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=FOLLOWERS_CSV_FIELDS)
+        with open(self.FOLLOWERS_FILENAME, "w", encoding="utf-8") as csv_file:
+            writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
             writer.writeheader()
 
         self.session = aiohttp.ClientSession()
@@ -83,12 +51,12 @@ class PeertubeCrawler:
             self.urls = first_urls
 
     async def fetch_instance_list(
-        self, url="https://index.kraut.zone/api/v1/instances/hosts"
+        self, url: str = "https://index.kraut.zone/api/v1/instances/hosts"
     ):
         instances = await self._fetch_json(url)
         self.urls = [instance["host"] for instance in instances["data"]]
 
-    async def _fetch_json(self, url, params=None):
+    async def _fetch_json(self, url: str, params: Optional[Mapping[str, str]] = None):
         try:
             async with self.session.get(url, timeout=300, params=params) as resp:
                 if resp.status != 200:
@@ -105,7 +73,7 @@ class PeertubeCrawler:
         except asyncio.TimeoutError as err:
             raise CrawlerException(f"Connection to {url} timed out") from err
 
-    async def inspect_instance(self, host):
+    async def inspect_instance(self, host: str):
         instance_dict = {"host": host}
         follower_links = []
         try:
@@ -115,7 +83,9 @@ class PeertubeCrawler:
                 "http://" + host + "/api/v1/server/stats"
             )
             info_dict = {
-                key: val for key, val in info_dict.items() if key in INSTANCE_CSV_FIELDS
+                key: val
+                for key, val in info_dict.items()
+                if key in self.INSTANCE_CSV_FIELDS
             }
             instance_dict.update(info_dict)
 
@@ -159,25 +129,25 @@ class PeertubeCrawler:
             instance_dict["error"] = str(err)
 
         async with self.info_csv_lock:
-            with open(INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=INSTANCE_CSV_FIELDS)
+            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
         async with self.link_csv_lock:
-            with open(FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=FOLLOWERS_CSV_FIELDS)
+            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
                 for source, dest in follower_links:
                     writer.writerow({"Source": source, "Target": dest})
 
     def check_unknown_urls_in_csv(self):
         crawled = set()
-        with open(INSTANCES_FILENAME, encoding="utf-8") as csvfile:
+        with open(self.INSTANCES_FILENAME, encoding="utf-8") as csvfile:
             data = DictReader(csvfile)
             for row in data:
                 crawled.add(row["host"])
 
         from_links = set()
-        with open(FOLLOWERS_FILENAME, encoding="utf-8") as csvfile:
+        with open(self.FOLLOWERS_FILENAME, encoding="utf-8") as csvfile:
             data = DictReader(csvfile)
             for row in data:
                 from_links.add(row["Source"])
@@ -187,7 +157,7 @@ class PeertubeCrawler:
 
     def drop_duplicate_followers(self):
         seen = set()
-        for line in fileinput.FileInput(FOLLOWERS_FILENAME, inplace=True):
+        for line in fileinput.FileInput(self.FOLLOWERS_FILENAME, inplace=True):
             prev_len = len(seen)
             seen.add(line)
             if len(seen) > prev_len:
@@ -195,11 +165,11 @@ class PeertubeCrawler:
 
     def data_cleaning(self):
         working_instances = set()
-        with open(INSTANCES_FILENAME, encoding="utf-8") as rawfile, open(
-            "clean_" + INSTANCES_FILENAME, "w", encoding="utf-8"
+        with open(self.INSTANCES_FILENAME, encoding="utf-8") as rawfile, open(
+            "clean_" + self.INSTANCES_FILENAME, "w", encoding="utf-8"
         ) as cleanfile:
             data = DictReader(rawfile)
-            writer = DictWriter(cleanfile, fieldnames=INSTANCE_CSV_FIELDS)
+            writer = DictWriter(cleanfile, fieldnames=self.INSTANCE_CSV_FIELDS)
             writer.writeheader()
             for row in data:
                 if row["error"] == "":
@@ -208,11 +178,11 @@ class PeertubeCrawler:
                     row["Label"] = row["host"]
                     writer.writerow(row)
 
-        with open(FOLLOWERS_FILENAME, encoding="utf-8") as rawfile, open(
-            "clean_" + FOLLOWERS_FILENAME, "w", encoding="utf-8"
+        with open(self.FOLLOWERS_FILENAME, encoding="utf-8") as rawfile, open(
+            "clean_" + self.FOLLOWERS_FILENAME, "w", encoding="utf-8"
         ) as cleanfile:
             data = DictReader(rawfile)
-            writer = DictWriter(cleanfile, fieldnames=FOLLOWERS_CSV_FIELDS)
+            writer = DictWriter(cleanfile, fieldnames=self.FOLLOWERS_CSV_FIELDS)
             writer.writeheader()
             for row in data:
                 if (
@@ -255,13 +225,3 @@ class PeertubeCrawler:
 
     async def __aexit__(self, *args, **kwargs):
         await self.session.close()
-
-
-async def main():
-    async with PeertubeCrawler() as crawler:
-        await crawler.fetch_instance_list()
-        await crawler.launch()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
