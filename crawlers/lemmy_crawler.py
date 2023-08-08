@@ -5,12 +5,12 @@ import json
 
 from csv import DictWriter
 
-from common import FederationCrawler, CrawlerException
+from common import FederationCrawler, CrawlerException, Crawler
 
 
 class LemmyFederationCrawler(FederationCrawler):
     SOFTWARE = "lemmy"
-    INSTANCE_CSV_FIELDS = [
+    INSTANCES_CSV_FIELDS = [
         "host",
         "version",
         "users",
@@ -120,6 +120,16 @@ class LemmyFederationCrawler(FederationCrawler):
 
                 for dest in blocked_instances:
                     writer.writerow({"Source": host, "Target": dest, "Weight": -1})
+
+
+class LemmyCommunityCrawler(Crawler):
+    SOFTWARE = "lemmy"
+    CRAWL_SUBJECT = "community"
+
+    COMMUNITY_ACTIVITY_CSV = "community_activity.csv"
+    CROSS_INSTANCE_CSV = "cross_instance_interactions.csv"
+    INTRA_INSTANCE_CSV = "intra_instance_interactions.csv"
+    CSV_FIELDS = ["Source", "Target", "Weight"]
 
 
 async def main():

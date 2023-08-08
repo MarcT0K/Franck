@@ -10,11 +10,11 @@ This repository uses [aiohttp](https://docs.aiohttp.org/en/stable/index.html) an
 
 ## Crawling initialization
 
-## Peertube
+### Peertube
 
 By default, the crawl starts from the instance list of <https://index.kraut.zone/api/v1/instances/hosts>, which is more exhaustive than the Peertube instance list.
 
-## Lemmy
+### Lemmy
 
 ## About the output
 

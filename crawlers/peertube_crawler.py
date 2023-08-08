@@ -10,7 +10,7 @@ from common import FederationCrawler, CrawlerException
 
 class PeertubeCrawler(FederationCrawler):
     SOFTWARE = "peertube"
-    INSTANCE_CSV_FIELDS = [
+    INSTANCES_CSV_FIELDS = [
         "host",
         "totalUsers",
         "totalDailyActiveUsers",
@@ -107,7 +107,7 @@ class PeertubeCrawler(FederationCrawler):
                 for source, dest in follower_links:
                     writer.writerow({"Source": source, "Target": dest})
 
-    def post_round_cleaning(self):
+    def post_round(self):
         seen = set()
 
         # Remove duplicate rows
@@ -116,6 +116,8 @@ class PeertubeCrawler(FederationCrawler):
             seen.add(line)
             if len(seen) > prev_len:
                 print(line, end="")
+
+        super(FederationCrawler, self).post_round()
 
 
 async def main():

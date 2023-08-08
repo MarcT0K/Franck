@@ -1,5 +1,6 @@
 # Possible improvements
 
+- Use feather or parquet file instead of CSV
 - Enable retries on failure
 - Add a CLI interface for the crawling parameters
 - Improve timeout management
