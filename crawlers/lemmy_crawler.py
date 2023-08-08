@@ -2,10 +2,27 @@
 
 import asyncio
 import json
-
 from csv import DictWriter
 
-from common import FederationCrawler, CrawlerException, Crawler
+import aiohttp
+
+from common import Crawler, CrawlerException, FederationCrawler
+
+
+async def fetch_lemmy_instance_list():
+    # GraphQL query
+    body = """{
+        nodes(softwarename:"lemmy", status:"UP") {
+            domain
+        }
+        }"""
+
+    async with aiohttp.ClientSession() as session:
+        resp = await session.post(
+            "https://api.fediverse.observer", json={"query": body}, timeout=300
+        )
+        data = json.loads(await resp.read())
+    return [instance["domain"] for instance in data["data"]["nodes"]]
 
 
 class LemmyFederationCrawler(FederationCrawler):
@@ -27,18 +44,6 @@ class LemmyFederationCrawler(FederationCrawler):
         "Id",
         "Label",
     ]
-
-    async def fetch_instance_list(self, url: str = "https://api.fediverse.observer"):
-        # GraphQL query
-        body = """{
-            nodes(softwarename:"lemmy", status:"UP") {
-                domain
-            }
-            }"""
-        resp = await self.session.post(url, json={"query": body}, timeout=300)
-        data = json.loads(await resp.read())
-        instances = [instance["domain"] for instance in data["data"]["nodes"]]
-        self.urls = instances
 
     async def inspect_instance(self, host: str):
         instance_dict = {"host": host}
@@ -127,14 +132,59 @@ class LemmyCommunityCrawler(Crawler):
     CRAWL_SUBJECT = "community"
 
     COMMUNITY_ACTIVITY_CSV = "community_activity.csv"
+    COMMUNITY_ACTIVITY_FIELDS = ["instance", "community", "number_posts"]
+    COMMUNITY_OWNERSHIP_CSV = "community_ownership.csv"
+    COMMUNITY_OWNERSHIP_FIELDS = [
+        "instance",
+        "community",
+        "subscribers",
+        "posts",
+        "comments",
+        "users_active_day",
+        "users_active_week",
+        "users_active_month",
+    ]
     CROSS_INSTANCE_CSV = "cross_instance_interactions.csv"
     INTRA_INSTANCE_CSV = "intra_instance_interactions.csv"
     CSV_FIELDS = ["Source", "Target", "Weight"]
 
+    TEMP_CSV = "temporary.csv"
+    TEMP_FIELDS = ["user_instance", "community", "community_instance"]
+
+    # TODO: Tout ecrire dans un CSV temporaire puis le charger ligne par ligne pour contruire des creuses
+    # Ce système de fichier simplifiera le truc si on veut passer en multi proc => On crawl naivement puis on aggrège
+
+    def __init__(self, first_urls):
+        super().__init__(first_urls, 1)
+
+        self.temp_file_lock = Crawler.init_csv_file(self.TEMP_CSV, self.TEMP_FIELDS)
+        self.intra_inst_lock = Crawler.init_csv_file(
+            self.INTRA_INSTANCE_CSV, self.CSV_FIELDS
+        )
+        self.cross_inst_lock = Crawler.init_csv_file(
+            self.CROSS_INSTANCE_CSV, self.CSV_FIELDS
+        )
+        self.community_act_lock = Crawler.init_csv_file(
+            self.COMMUNITY_ACTIVITY_CSV, self.COMMUNITY_ACTIVITY_FIELDS
+        )
+        self.community_own_lock = Crawler.init_csv_file(
+            self.COMMUNITY_OWNERSHIP_CSV, self.COMMUNITY_OWNERSHIP_FIELDS
+        )
+
+    async def inspect_instance(self, host):
+        ...
+
+    def data_cleaning(self):
+        ...
+
 
 async def main():
-    async with LemmyFederationCrawler() as crawler:
-        await crawler.fetch_instance_list()
+    start_urls = await fetch_lemmy_instance_list()
+
+    async with LemmyFederationCrawler(start_urls) as crawler:
+        await crawler.launch()
+
+    async with LemmyCommunityCrawler(start_urls) as crawler:
         await crawler.launch()
 
 

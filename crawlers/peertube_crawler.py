@@ -2,10 +2,18 @@
 
 import asyncio
 import fileinput
-
 from csv import DictWriter
 
-from common import FederationCrawler, CrawlerException
+import aiohttp
+
+from common import CrawlerException, FederationCrawler
+
+
+async def fetch_peertube_instance_list():
+    async with aiohttp.ClientSession() as session:
+        resp = await session.get("https://index.kraut.zone/api/v1/instances/hosts")
+        instances = await resp.json()
+    return [instance["host"] for instance in instances["data"]]
 
 
 class PeertubeCrawler(FederationCrawler):
@@ -32,12 +40,6 @@ class PeertubeCrawler(FederationCrawler):
         "Label",
     ]
 
-    async def fetch_instance_list(
-        self, url: str = "https://index.kraut.zone/api/v1/instances/hosts"
-    ):
-        instances = await self._fetch_json(url)
-        self.urls = [instance["host"] for instance in instances["data"]]
-
     async def inspect_instance(self, host: str):
         instance_dict = {"host": host}
         follower_links = []
@@ -50,12 +52,12 @@ class PeertubeCrawler(FederationCrawler):
             info_dict = {
                 key: val
                 for key, val in info_dict.items()
-                if key in self.INSTANCE_CSV_FIELDS
+                if key in self.INSTANCES_CSV_FIELDS
             }
             instance_dict.update(info_dict)
 
             config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
-            instance_dict["serverVersion"] = config_dict["server_version"]
+            instance_dict["serverVersion"] = config_dict["serverVersion"]
 
             # Fetch instance followers
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
@@ -98,7 +100,7 @@ class PeertubeCrawler(FederationCrawler):
 
         async with self.info_csv_lock:
             with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
         async with self.link_csv_lock:
@@ -117,12 +119,12 @@ class PeertubeCrawler(FederationCrawler):
             if len(seen) > prev_len:
                 print(line, end="")
 
-        super(FederationCrawler, self).post_round()
+        super().post_round()
 
 
 async def main():
-    async with PeertubeCrawler() as crawler:
-        await crawler.fetch_instance_list()
+    start_urls = await fetch_peertube_instance_list()
+    async with PeertubeCrawler(start_urls) as crawler:
         await crawler.launch()
 
 

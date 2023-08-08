@@ -3,11 +3,10 @@
 import asyncio
 import json
 import os
-
 from abc import abstractmethod
-from csv import DictWriter, DictReader
+from csv import DictReader, DictWriter
 from datetime import datetime
-from typing import Optional, List, Mapping, Dict, Any
+from typing import Any, Dict, List, Mapping, Optional
 
 import aiohttp
 from tqdm.asyncio import tqdm
@@ -27,7 +26,11 @@ class Crawler:
     SOFTWARE = None
     CRAWL_SUBJECT = None
 
-    def __init__(self):
+    def __init__(
+        self,
+        first_urls: List[str],
+        crawl_depth: int = -1,
+    ):
         # Create the result folder
         result_dir = (
             self.SOFTWARE
@@ -42,21 +45,16 @@ class Crawler:
         # Initialize HTTP session
         self.session = aiohttp.ClientSession()
 
+        self.max_crawl_depth = crawl_depth
+
+        self.urls = first_urls
+
     @staticmethod
     def init_csv_file(filename, fields) -> asyncio.Lock:
         with open(filename, "w", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=fields)
             writer.writeheader()
         return asyncio.Lock()
-
-    @abstractmethod
-    async def fetch_instance_list(self, url: str):
-        """Fetch a list of instances provided by a public database.
-
-        Args:
-            url (str): URL of the public database
-        """
-        raise NotImplementedError
 
     @abstractmethod
     async def inspect_instance(self, host: str):
@@ -71,7 +69,7 @@ class Crawler:
         """Various post-round operations."""
 
     @abstractmethod
-    async def data_cleaning(self):
+    def data_cleaning(self):
         ...
 
     async def launch(self):
@@ -162,10 +160,10 @@ class FederationCrawler(Crawler):
 
     def __init__(
         self,
-        first_urls: List[str] = None,
+        first_urls: List[str],
         crawl_depth: int = -1,
     ):
-        super(Crawler, self).__init__()
+        super().__init__(first_urls, crawl_depth)
 
         self.info_csv_lock = Crawler.init_csv_file(
             self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS
@@ -174,12 +172,9 @@ class FederationCrawler(Crawler):
             self.FOLLOWERS_FILENAME, self.FOLLOWERS_CSV_FIELDS
         )
 
-        self.max_crawl_depth = crawl_depth
-
-        self.urls = []
-        if first_urls is not None:
-            assert isinstance(first_urls, list)
-            self.urls = first_urls
+    @abstractmethod
+    async def inspect_instance(self, host: str):
+        raise NotImplementedError
 
     def post_round(self):
         self.check_unknown_urls_in_csv()
