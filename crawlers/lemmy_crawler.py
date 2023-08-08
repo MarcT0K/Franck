@@ -2,7 +2,9 @@
 
 import asyncio
 import json
+import os
 from csv import DictWriter
+import urllib.parse
 
 import aiohttp
 
@@ -178,10 +180,12 @@ class LemmyCommunityCrawler(Crawler):
         )
 
     async def inspect_instance(self, host):
+        communities = []
         try:
             communities = await self.crawl_community_list(host)
         except CrawlerException as err:
             print(f"Error while crawling the community list of {host}: {str(err)}")
+            return
 
         for community in communities:
             try:
@@ -195,7 +199,8 @@ class LemmyCommunityCrawler(Crawler):
         local_communities = []
 
         page = 1
-        while True:
+        crawl_over = False
+        while not crawl_over:
             params = {
                 "page": page,
                 "limit": 50,
@@ -216,29 +221,32 @@ class LemmyCommunityCrawler(Crawler):
                 current_community["instance"] = host
                 current_community["community"] = community["community"]["name"]
 
-                new_communities.append(current_community)
-
                 if (
                     (
                         self.activity_scope == "TopDay"
                         and current_community["users_active_day"]
-                        > self.min_active_user_per_community
+                        < self.min_active_user_per_community
                     )
                     or (
                         self.activity_scope == "TopWeek"
                         and current_community["users_active_week"]
-                        > self.min_active_user_per_community
+                        < self.min_active_user_per_community
                     )
                     or (
                         self.activity_scope == "TopMonth"
                         and current_community["users_active_month"]
-                        > self.min_active_user_per_community
+                        < self.min_active_user_per_community
                     )
                 ):
+                    crawl_over = True
                     break
 
                 if len(resp["communities"]) < 50:
+                    crawl_over = True
                     break
+
+                new_communities.append(current_community)
+                local_communities.append(community["community"]["name"])
 
             async with self.community_own_lock:
                 with open(
@@ -254,17 +262,52 @@ class LemmyCommunityCrawler(Crawler):
         return local_communities
 
     async def crawl_community_posts(self, host, community):
-        ...
+        page = 1
+
+        crawl_over = False
+        while not crawl_over:
+            params = {
+                "page": page,
+                "limit": 50,
+                "sort": self.activity_scope,
+                "community_name": community,
+            }
+            resp = await self._fetch_json(
+                "http://" + host + "/api/v3/post/list", params=params
+            )
+
+            new_posts = []
+            for post in resp["posts"]:
+                current = {"community": community, "community_instance": host}
+                current["user_instance"] = urllib.parse.urlparse(
+                    post["creator"]["actor_id"]
+                )
+
+                if len(resp["posts"]) < 50:
+                    crawl_over = True
+                    break
+
+                new_posts.append(current)
+
+            async with self.temp_file_lock:
+                with open(self.TEMP_CSV, "a", encoding="utf-8") as csv_file:
+                    writer = DictWriter(csv_file, fieldnames=self.TEMP_FIELDS)
+                    for post_dict in new_posts:
+                        writer.writerow(post_dict)
+
+            page += 1
 
     def data_cleaning(self):
-        ...
+        # TODO
+
+        os.remove(self.TEMP_CSV)
 
 
 async def main():
     start_urls = await fetch_lemmy_instance_list()
 
-    async with LemmyFederationCrawler(start_urls) as crawler:
-        await crawler.launch()
+    # async with LemmyFederationCrawler(start_urls) as crawler:
+    #     await crawler.launch()
 
     async with LemmyCommunityCrawler(start_urls) as crawler:
         await crawler.launch()
