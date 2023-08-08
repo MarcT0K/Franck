@@ -2,7 +2,8 @@
 
 - Use feather or parquet file instead of CSV
 - Enable retries on failure
-- Add a CLI interface for the crawling parameters
+- Add a CLI interface
+- Add some logging
 - Improve timeout management
 - Check whether the crawler does not land on any malicious/illegal website
 - Unit testing

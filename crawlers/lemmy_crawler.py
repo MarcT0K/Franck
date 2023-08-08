@@ -154,8 +154,14 @@ class LemmyCommunityCrawler(Crawler):
     # TODO: Tout ecrire dans un CSV temporaire puis le charger ligne par ligne pour contruire des creuses
     # Ce système de fichier simplifiera le truc si on veut passer en multi proc => On crawl naivement puis on aggrège
 
-    def __init__(self, first_urls):
+    def __init__(
+        self, first_urls, activity_scope="TopWeek", min_active_user_per_community=10
+    ):
         super().__init__(first_urls, 1)
+        if activity_scope not in ("TopDay", "TopWeek", "TopMonth"):
+            raise CrawlerException("Invalid activity window.")
+        self.activity_scope = activity_scope
+        self.min_active_user_per_community = min_active_user_per_community
 
         self.temp_file_lock = Crawler.init_csv_file(self.TEMP_CSV, self.TEMP_FIELDS)
         self.intra_inst_lock = Crawler.init_csv_file(
@@ -172,6 +178,82 @@ class LemmyCommunityCrawler(Crawler):
         )
 
     async def inspect_instance(self, host):
+        try:
+            communities = await self.crawl_community_list(host)
+        except CrawlerException as err:
+            print(f"Error while crawling the community list of {host}: {str(err)}")
+
+        for community in communities:
+            try:
+                await self.crawl_community_posts(host, community)
+            except CrawlerException as err:
+                print(
+                    f"Error while crawling the posts of {community} from {host}: {str(err)}"
+                )
+
+    async def crawl_community_list(self, host):
+        local_communities = []
+
+        page = 1
+        while True:
+            params = {
+                "page": page,
+                "limit": 50,
+                "type_": "Local",
+                "sort": self.activity_scope,
+            }
+            resp = await self._fetch_json(
+                "http://" + host + "/api/v3/community/list", params=params
+            )
+
+            new_communities = []
+            for community in resp["communities"]:
+                current_community = {
+                    key: val
+                    for key, val in community["counts"].items()
+                    if key in self.COMMUNITY_OWNERSHIP_FIELDS
+                }
+                current_community["instance"] = host
+                current_community["community"] = community["community"]["name"]
+
+                new_communities.append(current_community)
+
+                if (
+                    (
+                        self.activity_scope == "TopDay"
+                        and current_community["users_active_day"]
+                        > self.min_active_user_per_community
+                    )
+                    or (
+                        self.activity_scope == "TopWeek"
+                        and current_community["users_active_week"]
+                        > self.min_active_user_per_community
+                    )
+                    or (
+                        self.activity_scope == "TopMonth"
+                        and current_community["users_active_month"]
+                        > self.min_active_user_per_community
+                    )
+                ):
+                    break
+
+                if len(resp["communities"]) < 50:
+                    break
+
+            async with self.community_own_lock:
+                with open(
+                    self.COMMUNITY_OWNERSHIP_CSV, "a", encoding="utf-8"
+                ) as csv_file:
+                    writer = DictWriter(
+                        csv_file, fieldnames=self.COMMUNITY_OWNERSHIP_FIELDS
+                    )
+                    for community_dict in new_communities:
+                        writer.writerow(community_dict)
+
+            page += 1
+        return local_communities
+
+    async def crawl_community_posts(self, host, community):
         ...
 
     def data_cleaning(self):

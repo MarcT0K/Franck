@@ -109,7 +109,7 @@ class Crawler:
         await self.session.close()
 
     async def _fetch_json(
-        self, url: str, params: Optional[Mapping[str, str]] = None
+        self, url: str, params: Optional[Mapping[str, str]] = None, body=None
     ) -> Dict[str, Any]:
         """Query an instance API and returns the resulting JSON.
 
