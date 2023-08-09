@@ -1,19 +1,24 @@
 """Misskey graph crawler."""
 
-from common import Crawler, CrawlerException
+from common import Crawler, CrawlerException, fetch_fediverse_instance_list
 
 
-async def fetch_misskey_instance_list():
-    ...
-
-
-class MisskeyUserCrawler(Crawler):
-    def __init__():
+class MisskeyTopUserCrawler(Crawler):
+    def __init__(self, start_urls, nb_top_users=100):
         # TODO
         ...
 
     async def inspect_instance(self, host):
         # TODO
+        ...
+
+    async def crawl_user_list(self, host):
+        # https://misskey.io/api/users
+        ...
+
+    async def crawl_user_interactions(self, host, username, follower_list=True):
+        # https://misskey.io/api-doc#tag/users/operation/users/followers
+        # https://misskey.io/api-doc#tag/users/operation/users/followers
         ...
 
     async def data_cleaning(self):
@@ -22,9 +27,9 @@ class MisskeyUserCrawler(Crawler):
 
 
 async def main():
-    start_urls = await fetch_misskey_instance_list()
+    start_urls = await fetch_fediverse_instance_list("misskey")
 
-    async with MisskeyUserCrawler(start_urls) as crawler:
+    async with MisskeyTopUserCrawler(start_urls) as crawler:
         await crawler.launch()
 
 

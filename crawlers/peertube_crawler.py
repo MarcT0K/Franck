@@ -6,14 +6,7 @@ from csv import DictWriter
 
 import aiohttp
 
-from common import CrawlerException, FederationCrawler
-
-
-async def fetch_peertube_instance_list():
-    async with aiohttp.ClientSession() as session:
-        resp = await session.get("https://index.kraut.zone/api/v1/instances/hosts")
-        instances = await resp.json()
-    return [instance["host"] for instance in instances["data"]]
+from common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
 
 class PeertubeCrawler(FederationCrawler):
@@ -123,7 +116,7 @@ class PeertubeCrawler(FederationCrawler):
 
 
 async def main():
-    start_urls = await fetch_peertube_instance_list()
+    start_urls = await fetch_fediverse_instance_list("peertube")
     async with PeertubeCrawler(start_urls) as crawler:
         await crawler.launch()
 

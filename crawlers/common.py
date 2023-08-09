@@ -24,6 +24,22 @@ class CrawlerException(Exception):
         return self.msg
 
 
+async def fetch_fediverse_instance_list(software):
+    # GraphQL query
+    body = f"""{{
+        nodes(softwarename:"{software}", status:"UP") {{
+            domain
+        }}
+        }}"""
+
+    async with aiohttp.ClientSession() as session:
+        resp = await session.post(
+            "https://api.fediverse.observer", json={"query": body}, timeout=300
+        )
+        data = json.loads(await resp.read())
+    return [instance["domain"] for instance in data["data"]["nodes"]]
+
+
 class Crawler:
     SOFTWARE = None
     CRAWL_SUBJECT = None

@@ -1,30 +1,17 @@
 "Lemmy graph crawlers"
 
 import asyncio
-import json
 from csv import DictWriter, DictReader
 import urllib.parse
 
-import aiohttp
 import scipy.sparse as sp
 
-from common import Crawler, CrawlerException, FederationCrawler
-
-
-async def fetch_lemmy_instance_list():
-    # GraphQL query
-    body = """{
-        nodes(softwarename:"lemmy", status:"UP") {
-            domain
-        }
-        }"""
-
-    async with aiohttp.ClientSession() as session:
-        resp = await session.post(
-            "https://api.fediverse.observer", json={"query": body}, timeout=300
-        )
-        data = json.loads(await resp.read())
-    return [instance["domain"] for instance in data["data"]["nodes"]]
+from common import (
+    Crawler,
+    CrawlerException,
+    FederationCrawler,
+    fetch_fediverse_instance_list,
+)
 
 
 class LemmyFederationCrawler(FederationCrawler):
@@ -416,7 +403,7 @@ class LemmyCommunityCrawler(Crawler):
 
 
 async def main():
-    start_urls = await fetch_lemmy_instance_list()
+    start_urls = await fetch_fediverse_instance_list("lemmy")
 
     async with LemmyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
