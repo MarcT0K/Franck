@@ -160,7 +160,7 @@ class Crawler:
         self.logger.debug("Fetching %s [%s]", url, str(params))
 
         try:
-            async with self.session.get(url, timeout=300, params=params) as resp:
+            async with self.session.get(url, timeout=180, params=params) as resp:
                 if resp.status != 200:
                     raise CrawlerException(f"Error code {str(resp.status)} on {url}")
                 data = await resp.read()
