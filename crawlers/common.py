@@ -159,7 +159,11 @@ class Crawler:
         await self.session.close()
 
     async def _fetch_json(
-        self, url: str, params: Optional[Mapping[str, str]] = None
+        self,
+        url: str,
+        params: Optional[Mapping[str, str]] = None,
+        body=None,
+        get_op=True,
     ) -> Dict[str, Any]:
         """Query an instance API and returns the resulting JSON.
 
@@ -173,10 +177,13 @@ class Crawler:
         Returns:
             Dict: dictionary containing the JSON response.
         """
-        self.logger.debug("Fetching %s [%s]", url, str(params))
+        self.logger.debug(
+            "Fetching %s [params:%s] [body:%s]", url, str(params), str(body)
+        )
 
         try:
-            async with self.session.get(url, timeout=180, params=params) as resp:
+            req_func = self.session.get if get_op else self.session.post
+            async with req_func(url, timeout=180, params=params, json=None) as resp:
                 if resp.status != 200:
                     raise CrawlerException(f"Error code {str(resp.status)} on {url}")
                 data = await resp.read()
