@@ -1,6 +1,7 @@
 # Possible improvements
 
 - Use feather or parquet file instead of CSV
+- Write thorough documentation
 - Enable retries on failure
 - Add a CLI interface
 - Refactor the code for CSV writing
