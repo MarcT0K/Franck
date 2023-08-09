@@ -184,15 +184,20 @@ class LemmyCommunityCrawler(Crawler):
         try:
             communities = await self.crawl_community_list(host)
         except CrawlerException as err:
-            print(f"Error while crawling the community list of {host}: {str(err)}")
+            self.logger.warning(
+                "Error while crawling the community list of %s: %s", host, str(err)
+            )
             return
 
         for community in communities:
             try:
                 await self.crawl_community_posts(host, community)
             except CrawlerException as err:
-                print(
-                    f"Error while crawling the posts of {community} from {host}: {str(err)}"
+                self.logger.warning(
+                    "Error while crawling the posts of %s from %s: %s",
+                    community,
+                    host,
+                    str(err),
                 )
 
     async def crawl_community_list(self, host):
@@ -281,7 +286,7 @@ class LemmyCommunityCrawler(Crawler):
                 current = {"community": community, "community_instance": host}
                 current["user_instance"] = urllib.parse.urlparse(
                     post["creator"]["actor_id"]
-                )
+                ).netloc
 
                 if len(resp["posts"]) < 50:
                     crawl_over = True

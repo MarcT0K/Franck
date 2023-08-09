@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 from abc import abstractmethod
 from csv import DictReader, DictWriter
@@ -9,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional
 
 import aiohttp
+import colorlog
 from tqdm.asyncio import tqdm
 
 
@@ -49,6 +51,38 @@ class Crawler:
 
         self.urls = first_urls
 
+        self._setup_logger()
+
+    def _setup_logger(self):
+        self.logger = colorlog.getLogger(self.SOFTWARE + "_" + self.CRAWL_SUBJECT)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.handlers = []  # Reset handlers
+        handler = colorlog.StreamHandler()
+        handler.setFormatter(
+            colorlog.ColoredFormatter(
+                "%(log_color)s[%(asctime)s %(levelname)s]%(reset)s %(white)s%(message)s",
+                datefmt="%H:%M:%S",
+                reset=True,
+                log_colors={
+                    "DEBUG": "cyan",
+                    "INFO": "green",
+                    "WARNING": "yellow",
+                    "ERROR": "red",
+                    "CRITICAL": "red",
+                },
+            )
+        )
+        handler.setLevel(logging.INFO)
+        self.logger.addHandler(handler)
+        fhandler = logging.FileHandler(
+            self.SOFTWARE + "_" + self.CRAWL_SUBJECT + ".log"
+        )
+        fhandler.setFormatter(
+            logging.Formatter("[%(asctime)s %(levelname)s] %(message)s")
+        )
+        fhandler.setLevel(logging.DEBUG)
+        self.logger.addHandler(fhandler)
+
     @staticmethod
     def init_csv_file(filename, fields) -> asyncio.Lock:
         with open(filename, "w", encoding="utf-8") as csv_file:
@@ -81,9 +115,9 @@ class Crawler:
         crawl_done = False
         current_depth = 1
 
-        print("Crawl begins...")
+        self.logger.info("Crawl begins...")
         while not crawl_done:
-            print("Crawling round ", current_depth)
+            self.logger.info("Crawling round %d", current_depth)
             tasks = [self.inspect_instance(url) for url in self.urls]
 
             for task in tqdm.as_completed(tasks):
@@ -94,10 +128,10 @@ class Crawler:
             if len(self.urls) == 0 or current_depth == self.max_crawl_depth:
                 crawl_done = True
             current_depth += 1
-        print("Crawl completed!!!")
-        print("Cleaning the data...")
+        self.logger.info("Crawl completed!!!")
+        self.logger.info("Cleaning the data...")
         self.data_cleaning()
-        print("Done.")
+        self.logger.info("Done.")
 
     async def close(self):
         await self.session.close()
@@ -109,7 +143,7 @@ class Crawler:
         await self.session.close()
 
     async def _fetch_json(
-        self, url: str, params: Optional[Mapping[str, str]] = None, body=None
+        self, url: str, params: Optional[Mapping[str, str]] = None
     ) -> Dict[str, Any]:
         """Query an instance API and returns the resulting JSON.
 
@@ -123,6 +157,8 @@ class Crawler:
         Returns:
             Dict: dictionary containing the JSON response.
         """
+        self.logger.debug("Fetching %s [%s]", url, str(params))
+
         try:
             async with self.session.get(url, timeout=300, params=params) as resp:
                 if resp.status != 200:
