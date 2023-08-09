@@ -163,7 +163,7 @@ class Crawler:
         url: str,
         params: Optional[Mapping[str, str]] = None,
         body=None,
-        get_op=True,
+        op="GET",
     ) -> Dict[str, Any]:
         """Query an instance API and returns the resulting JSON.
 
@@ -182,8 +182,14 @@ class Crawler:
         )
 
         try:
-            req_func = self.session.get if get_op else self.session.post
-            async with req_func(url, timeout=180, params=params, json=None) as resp:
+            if op == "GET":
+                req_func = self.session.get
+            elif op == "POST":
+                req_func = self.session.post
+            else:
+                raise NotImplementedError
+
+            async with req_func(url, timeout=180, params=params, json=body) as resp:
                 if resp.status != 200:
                     raise CrawlerException(f"Error code {str(resp.status)} on {url}")
                 data = await resp.read()

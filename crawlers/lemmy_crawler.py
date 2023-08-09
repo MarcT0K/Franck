@@ -192,6 +192,7 @@ class LemmyCommunityCrawler(Crawler):
                     host,
                     str(err),
                 )
+                return
 
     async def crawl_community_list(self, host):
         local_communities = []
@@ -317,7 +318,7 @@ class LemmyCommunityCrawler(Crawler):
 
         with open(self.COMMUNITY_OWNERSHIP_CSV, "r", encoding="utf-8") as csv_file:
             reader = DictReader(csv_file, fieldnames=self.COMMUNITY_OWNERSHIP_FIELDS)
-            next(reader, None)
+            next(reader, None)  # Skip the csv header
             for row in reader:
                 instance_ind = -1
                 if row["instance"] in instance_dict:
@@ -344,7 +345,7 @@ class LemmyCommunityCrawler(Crawler):
 
         with open(self.INTERACTIONS_CSV, "r", encoding="utf-8") as csv_file:
             reader = DictReader(csv_file, fieldnames=self.INTERACTIONS_FIELDS)
-            next(reader, None)
+            next(reader, None)  # Skip the CSV header
             for post_dict in reader:
                 instance = post_dict["user_instance"]
                 community = post_dict["community"]
