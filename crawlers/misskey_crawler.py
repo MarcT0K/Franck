@@ -35,7 +35,7 @@ class MisskeyTopUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 100
 
-    def __init__(self, first_urls, nb_top_users=100):
+    def __init__(self, first_urls, nb_top_users=10):
         super().__init__(first_urls, 1)
 
         self.nb_top_users = nb_top_users
@@ -72,10 +72,8 @@ class MisskeyTopUserCrawler(Crawler):
 
         for user in users:
             try:
-                await self._crawl_user_interactions(host, user)  # Followers
-                await self._crawl_user_interactions(
-                    host, user, followers_list=False
-                )  # Following
+                if user["followersCount"] > 0:
+                    await self._crawl_user_interactions(host, user)
             except CrawlerException as err:
                 self.logger.debug(
                     "Error while crawling the interactions of %s of %s: %s",
@@ -118,10 +116,10 @@ class MisskeyTopUserCrawler(Crawler):
                 "https://" + host + "/api/users", body=body, op="POST"
             )
 
+            users.extend(resp)
+
             if len(resp) < self.MAX_PAGE_SIZE:
                 break
-
-            users.extend(resp)
 
             offset += self.MAX_PAGE_SIZE
 
@@ -143,12 +141,7 @@ class MisskeyTopUserCrawler(Crawler):
 
         return users
 
-    async def _crawl_user_interactions(self, host, user_info, followers_list=True):
-        if followers_list:
-            endpoint = "/api/users/followers"
-        else:
-            endpoint = "/api/users/following"
-
+    async def _crawl_user_interactions(self, host, user_info):
         follow_dicts = []
 
         last_id = "0"
@@ -160,35 +153,20 @@ class MisskeyTopUserCrawler(Crawler):
                 "host": host,
             }
             resp = await self._fetch_json(
-                "https://" + host + endpoint, body=body, op="POST"
+                "https://" + host + "/api/users/followers", body=body, op="POST"
             )
 
             host_check = lambda host_input: host if host_input is None else host_input
 
-            if followers_list:
-                new_follows = [
-                    {
-                        "follower": follow_dict["follower"]["username"],
-                        "follower_instance": host_check(
-                            follow_dict["follower"]["host"]
-                        ),
-                        "followee": user_info["username"],
-                        "followee_instance": host_check(user_info["host"]),
-                    }
-                    for follow_dict in resp
-                ]
-            else:
-                new_follows = [
-                    {
-                        "followee": follow_dict["followee"]["username"],
-                        "followee_instance": host_check(
-                            follow_dict["followee"]["host"]
-                        ),
-                        "follower": user_info["username"],
-                        "follower_instance": host_check(user_info["host"]),
-                    }
-                    for follow_dict in resp
-                ]
+            new_follows = [
+                {
+                    "follower": follow_dict["follower"]["username"],
+                    "follower_instance": host_check(follow_dict["follower"]["host"]),
+                    "followee": user_info["username"],
+                    "followee_instance": host_check(user_info["host"]),
+                }
+                for follow_dict in resp
+            ]
 
             follow_dicts.extend(new_follows)
 
@@ -204,8 +182,28 @@ class MisskeyTopUserCrawler(Crawler):
                     writer.writerow(follow)
 
     def data_cleaning(self):
-        # TODO
-        ...
+        follows_dict = {}
+        with open(self.CRAWLED_FOLLOWS_CSV, "r", encoding="utf-8") as csv_file:
+            reader = DictReader(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)
+            next(reader, None)  # Skip the header
+            for follow in reader:
+                follower = follow["follower_instance"]
+                followee = follow["followee_instance"]
+                prev_follower = follows_dict.get(follower, {})
+                prev_follower[followee] = prev_follower.get(followee, 0) + 1
+                follows_dict[follower] = prev_follower
+
+        with open(self.FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
+            writer = DictWriter(csv_file, fieldnames=self.FOLLOWS_FIELDS)
+            for follower, followees_dict in follows_dict.items():
+                for followee, follows_count in followees_dict.items():
+                    writer.writerow(
+                        {
+                            "Source": follower,
+                            "Target": followee,
+                            "Weight": follows_count,
+                        }
+                    )
 
 
 async def main():

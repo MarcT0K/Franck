@@ -91,7 +91,7 @@ class Crawler:
         handler.setLevel(logging.INFO)
         self.logger.addHandler(handler)
         fhandler = logging.FileHandler(
-            self.SOFTWARE + "_" + self.CRAWL_SUBJECT + ".log"
+            "crawl_" + self.SOFTWARE + "_" + self.CRAWL_SUBJECT + ".log"
         )
         fhandler.setFormatter(
             logging.Formatter("[%(asctime)s %(levelname)s] %(message)s")
