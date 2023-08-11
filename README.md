@@ -1,4 +1,4 @@
-# Fediverse graph crawler
+# Franck, the Fediverse graph crawler
 
 This repository contains a Python script to crawl various social media from the Fediverse. The goal is to fetch information about the Fediverse and represent it with different graphs.
 
