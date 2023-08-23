@@ -206,12 +206,8 @@ class MisskeyTopUserCrawler(Crawler):
                     )
 
 
-async def main():
+async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
 
     async with MisskeyTopUserCrawler(start_urls) as crawler:
         await crawler.launch()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

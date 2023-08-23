@@ -401,15 +401,11 @@ class LemmyCommunityCrawler(Crawler):
                     )
 
 
-async def main():
+async def launch_lemmy_crawl():
     start_urls = await fetch_fediverse_instance_list("lemmy")
 
     async with LemmyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
 
-    # async with LemmyCommunityCrawler(start_urls) as crawler:
-    #     await crawler.launch()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    async with LemmyCommunityCrawler(start_urls) as crawler:
+        await crawler.launch()
