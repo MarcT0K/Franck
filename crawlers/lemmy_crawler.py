@@ -45,7 +45,7 @@ class LemmyFederationCrawler(FederationCrawler):
                 {
                     key: val
                     for key, val in info_dict["site_view"]["counts"].items()
-                    if key in self.INSTANCE_CSV_FIELDS
+                    if key in self.INSTANCES_CSV_FIELDS
                 }
             )
 
@@ -56,7 +56,7 @@ class LemmyFederationCrawler(FederationCrawler):
                     {
                         key: val
                         for key, val in info_dict["site_view"]["site"].items()
-                        if key in self.INSTANCE_CSV_FIELDS
+                        if key in self.INSTANCES_CSV_FIELDS
                     }
                 )
             else:
@@ -64,7 +64,7 @@ class LemmyFederationCrawler(FederationCrawler):
                     {
                         key: val
                         for key, val in info_dict["site_view"]["local_site"].items()
-                        if key in self.INSTANCE_CSV_FIELDS
+                        if key in self.INSTANCES_CSV_FIELDS
                     }
                 )
 
@@ -103,7 +103,7 @@ class LemmyFederationCrawler(FederationCrawler):
 
         async with self.info_csv_lock:
             with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCE_CSV_FIELDS)
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
         async with self.link_csv_lock:
@@ -147,10 +147,8 @@ class LemmyCommunityCrawler(Crawler):
         "post_id",
     ]
 
-    def __init__(
-        self, first_urls, activity_scope="TopWeek", min_active_user_per_community=5
-    ):
-        super().__init__(first_urls, 1)
+    def __init__(self, urls, activity_scope="TopWeek", min_active_user_per_community=5):
+        super().__init__(urls, 1)
         if activity_scope not in ("TopDay", "TopWeek", "TopMonth"):
             raise CrawlerException("Invalid activity window.")
         self.activity_scope = activity_scope
@@ -409,8 +407,8 @@ async def main():
     async with LemmyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
 
-    async with LemmyCommunityCrawler(start_urls) as crawler:
-        await crawler.launch()
+    # async with LemmyCommunityCrawler(start_urls) as crawler:
+    #     await crawler.launch()
 
 
 if __name__ == "__main__":

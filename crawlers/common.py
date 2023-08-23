@@ -46,8 +46,7 @@ class Crawler:
 
     def __init__(
         self,
-        first_urls: List[str],
-        crawl_depth: int = -1,
+        urls: List[str],
     ):
         # Create the result folder
         result_dir = (
@@ -63,9 +62,7 @@ class Crawler:
         # Initialize HTTP session
         self.session = aiohttp.ClientSession()
 
-        self.max_crawl_depth = crawl_depth
-
-        self.urls = first_urls
+        self.urls = urls
 
         self._setup_logger()
 
@@ -128,22 +125,12 @@ class Crawler:
         if not self.urls:
             raise CrawlerException("No URL to crawl")
 
-        crawl_done = False
-        current_depth = 1
-
         self.logger.info("Crawl begins...")
-        while not crawl_done:
-            self.logger.info("Crawling round %d", current_depth)
-            tasks = [self.inspect_instance(url) for url in self.urls]
+        tasks = [self.inspect_instance(url) for url in self.urls]
 
-            for task in tqdm.as_completed(tasks):
-                await task
+        for task in tqdm.as_completed(tasks):
+            await task
 
-            self.post_round()
-
-            if len(self.urls) == 0 or current_depth == self.max_crawl_depth:
-                crawl_done = True
-            current_depth += 1
         self.logger.info("Crawl completed!!!")
         self.logger.info("Cleaning the data...")
         self.data_cleaning()
@@ -223,12 +210,8 @@ class FederationCrawler(Crawler):
     FOLLOWERS_CSV_FIELDS = ["Source", "Target", "Weight"]
     INSTANCES_CSV_FIELDS: Optional[List[str]] = None
 
-    def __init__(
-        self,
-        first_urls: List[str],
-        crawl_depth: int = -1,
-    ):
-        super().__init__(first_urls, crawl_depth)
+    def __init__(self, urls: List[str]):
+        super().__init__(urls)
 
         self.info_csv_lock = Crawler.init_csv_file(
             self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS
@@ -240,30 +223,6 @@ class FederationCrawler(Crawler):
     @abstractmethod
     async def inspect_instance(self, host: str):
         raise NotImplementedError
-
-    def post_round(self):
-        self.check_unknown_urls_in_csv()
-
-    def check_unknown_urls_in_csv(self) -> List[str]:
-        """Extract the unexplored instances from the CSV files.
-
-        Returns:
-            List[str]: a list of instance hostnames
-        """
-        crawled = set()
-        with open(self.INSTANCES_FILENAME, encoding="utf-8") as csvfile:
-            data = DictReader(csvfile)
-            for row in data:
-                crawled.add(row["host"])
-
-        from_links = set()
-        with open(self.FOLLOWERS_FILENAME, encoding="utf-8") as csvfile:
-            data = DictReader(csvfile)
-            for row in data:
-                from_links.add(row["Source"])
-                from_links.add(row["Target"])
-
-        return list(from_links - crawled)
 
     def data_cleaning(self):
         """Clean the final result file."""
