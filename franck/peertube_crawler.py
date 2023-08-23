@@ -1,12 +1,8 @@
 "Peertube graph crawler"
-
-import asyncio
 import fileinput
 from csv import DictWriter
 
-import aiohttp
-
-from common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
+from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
 
 class PeertubeCrawler(FederationCrawler):

@@ -1,7 +1,6 @@
 # Possible improvements
 
 - Implement safeguards to avoid getting blocklisted
-- Use feather or parquet file instead of CSV
 - Write thorough documentation
 - Enable retries on failure
 - Add a CLI interface

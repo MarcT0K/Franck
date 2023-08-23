@@ -6,7 +6,7 @@ import urllib.parse
 
 import scipy.sparse as sp
 
-from common import (
+from .common import (
     Crawler,
     CrawlerException,
     FederationCrawler,

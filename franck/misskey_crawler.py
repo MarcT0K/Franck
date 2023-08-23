@@ -3,7 +3,7 @@ import asyncio
 
 from csv import DictWriter, DictReader
 
-from common import Crawler, CrawlerException, fetch_fediverse_instance_list
+from .common import Crawler, CrawlerException, fetch_fediverse_instance_list
 
 
 class MisskeyTopUserCrawler(Crawler):
