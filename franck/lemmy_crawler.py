@@ -1,6 +1,5 @@
 "Lemmy graph crawlers"
 
-import asyncio
 from csv import DictWriter, DictReader
 import urllib.parse
 

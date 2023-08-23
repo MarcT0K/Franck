@@ -1,5 +1,4 @@
 """Misskey graph crawler."""
-import asyncio
 
 from csv import DictWriter, DictReader
 

@@ -111,7 +111,7 @@ class PeertubeCrawler(FederationCrawler):
         super().post_round()
 
 
-async def launch_misskey_crawl():
+async def launch_peertube_crawl():
     start_urls = await fetch_fediverse_instance_list("peertube")
     async with PeertubeCrawler(start_urls) as crawler:
         await crawler.launch()
