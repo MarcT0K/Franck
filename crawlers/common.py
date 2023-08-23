@@ -1,6 +1,7 @@
 "Base crawler classes"
 
 import asyncio
+import glob
 import json
 import logging
 import os
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 import aiohttp
 import colorlog
+import pandas as pd
 from tqdm.asyncio import tqdm
 
 
@@ -134,6 +136,7 @@ class Crawler:
         self.logger.info("Crawl completed!!!")
         self.logger.info("Cleaning the data...")
         self.data_cleaning()
+        Crawler.compress_csv_files()
         self.logger.info("Done.")
 
     async def close(self):
@@ -194,6 +197,12 @@ class Crawler:
             if err.args[0] == "Can redirect only to http or https":
                 raise CrawlerException("Invalid redirect") from err
             raise
+
+    @staticmethod
+    def compress_csv_files():
+        for fname in glob.glob("*.csv"):
+            dataframe = pd.read_csv(fname)
+            dataframe.to_parquet(fname[:-4] + ".parquet")
 
 
 class FederationCrawler(Crawler):

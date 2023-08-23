@@ -130,6 +130,7 @@ dmypy.json
 
 # Misc.
 *.csv
+*.parquet
 *.gexf
 *.gephi
 .vscode/
