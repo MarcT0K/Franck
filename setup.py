@@ -6,8 +6,9 @@ setup(
     url="https://github.com/MarcT0K/Franck",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
-    description="Description of my package",
+    description="Crawlers for various Fediverse projects",
     packages=find_packages(),
+    license="GPLv3",
     python_requires=">=3.8",
     install_requires=["aiohttp[speedups]", "tqdm", "scipy", "pandas", "fastparquet"],
     entry_points={
