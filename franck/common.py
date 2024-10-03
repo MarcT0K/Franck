@@ -8,7 +8,7 @@ import os
 from abc import abstractmethod
 from csv import DictReader, DictWriter
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import aiohttp
 import colorlog
@@ -118,8 +118,7 @@ class Crawler:
         """Various post-round operations."""
 
     @abstractmethod
-    def data_cleaning(self):
-        ...
+    def data_cleaning(self): ...
 
     async def launch(self):
         """Launch the crawl"""
@@ -151,7 +150,7 @@ class Crawler:
     async def _fetch_json(
         self,
         url: str,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Union[str, int]]] = None,
         body=None,
         op="GET",
     ) -> Dict[str, Any]:
@@ -222,6 +221,8 @@ class FederationCrawler(Crawler):
     def __init__(self, urls: List[str]):
         super().__init__(urls)
 
+        assert self.INSTANCES_CSV_FIELDS is not None
+
         self.info_csv_lock = Crawler.init_csv_file(
             self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS
         )
@@ -240,6 +241,7 @@ class FederationCrawler(Crawler):
             "clean_" + self.INSTANCES_FILENAME, "w", encoding="utf-8"
         ) as cleanfile:
             data = DictReader(rawfile)
+            assert self.INSTANCES_CSV_FIELDS is not None
             writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
             writer.writeheader()
             for row in data:

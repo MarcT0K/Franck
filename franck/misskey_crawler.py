@@ -35,7 +35,7 @@ class MisskeyTopUserCrawler(Crawler):
     MAX_PAGE_SIZE = 100
 
     def __init__(self, urls, nb_top_users=10):
-        super().__init__(urls, 1)
+        super().__init__(urls)
 
         self.nb_top_users = nb_top_users
 

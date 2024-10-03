@@ -30,6 +30,7 @@ class PeertubeCrawler(FederationCrawler):
     ]
 
     async def inspect_instance(self, host: str):
+        assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
         follower_links = []
         try:
@@ -63,7 +64,7 @@ class PeertubeCrawler(FederationCrawler):
                     if link_dict["follower"]["name"] == "peertube":
                         # We avoid Mastodon followers
                         follower_links.append((link_dict["follower"]["host"], host))
-            instance_dict["totalPeertubeInstanceFollowers"] = len(follower_links)
+            instance_dict["totalPeertubeInstanceFollowers"] = str(len(follower_links))
 
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
@@ -80,8 +81,9 @@ class PeertubeCrawler(FederationCrawler):
                     if link_dict["following"]["name"] == "peertube":
                         # We avoid Mastodon followers
                         follower_links.append((host, link_dict["following"]["host"]))
-            instance_dict["totalPeertubeInstanceFollowing"] = (
-                len(follower_links) - instance_dict["totalPeertubeInstanceFollowers"]
+            instance_dict["totalPeertubeInstanceFollowing"] = str(
+                len(follower_links)
+                - int(instance_dict["totalPeertubeInstanceFollowers"])
             )
 
         except CrawlerException as err:

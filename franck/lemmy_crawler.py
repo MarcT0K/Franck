@@ -34,6 +34,7 @@ class LemmyFederationCrawler(FederationCrawler):
     ]
 
     async def inspect_instance(self, host: str):
+        assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
         linked_instances = []
         blocked_instances = []
@@ -147,7 +148,7 @@ class LemmyCommunityCrawler(Crawler):
     ]
 
     def __init__(self, urls, activity_scope="TopWeek", min_active_user_per_community=5):
-        super().__init__(urls, 1)
+        super().__init__(urls)
         if activity_scope not in ("TopDay", "TopWeek", "TopMonth"):
             raise CrawlerException("Invalid activity window.")
         self.activity_scope = activity_scope
