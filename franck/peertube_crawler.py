@@ -94,17 +94,22 @@ class PeertubeCrawler(FederationCrawler):
             str_err = "Missing key in the JSON " + str(err)
             instance_dict["error"] = str_err
             self.logger.debug("Error with instance " + host + " : " + str_err)
+        except AttributeError as err:
+            str_err = "Unexpected aiohttp-related error with " + host + " : " + str(err)
+            instance_dict["error"] = str_err
+            self.logger.debug("Error with instance " + host + " : " + str_err)
+        else:
+            async with self.info_csv_lock:
+                with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+                    writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
+                    writer.writerow(instance_dict)
 
-        async with self.info_csv_lock:
-            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
-                writer.writerow(instance_dict)
-
-        async with self.link_csv_lock:
-            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-                for source, dest in follower_links:
-                    writer.writerow({"Source": source, "Target": dest})
+            async with self.link_csv_lock:
+                with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+                    writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
+                    for source, dest in follower_links:
+                        writer.writerow({"Source": source, "Target": dest})
+            self.logger.debug("Successfully finished crawling of " + host)
 
     def post_round(self):
         seen = set()
