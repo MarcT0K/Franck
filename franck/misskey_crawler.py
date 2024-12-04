@@ -1,8 +1,13 @@
 """Misskey graph crawler."""
 
+import asyncio
+
 from csv import DictWriter, DictReader
 
 from .common import Crawler, CrawlerException, fetch_fediverse_instance_list
+
+
+DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
 
 
 class MisskeyTopUserCrawler(Crawler):
@@ -122,6 +127,8 @@ class MisskeyTopUserCrawler(Crawler):
 
             offset += self.MAX_PAGE_SIZE
 
+            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+
         async with self.crawled_users_lock:
             with open(self.CRAWLED_USERS_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.CRAWLED_USERS_FIELDS)
@@ -173,6 +180,8 @@ class MisskeyTopUserCrawler(Crawler):
                 break
 
             last_id = resp[-1]["id"]
+
+            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
         async with self.crawled_follows_lock:
             with open(self.CRAWLED_FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:

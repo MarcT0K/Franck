@@ -61,6 +61,9 @@ class Crawler:
         os.mkdir(result_dir)
         os.chdir(result_dir)
 
+        # Load balacing
+        self.concurrent_connection_sem = asyncio.Semaphore(1000)
+
         # Initialize HTTP session
         self.session = aiohttp.ClientSession()
 
@@ -170,32 +173,35 @@ class Crawler:
             "Fetching %s [params:%s] [body:%s]", url, str(params), str(body)
         )
 
-        try:
-            if op == "GET":
-                req_func = self.session.get
-            elif op == "POST":
-                req_func = self.session.post
-            else:
-                raise NotImplementedError
+        async with self.concurrent_connection_sem:
+            try:
+                if op == "GET":
+                    req_func = self.session.get
+                elif op == "POST":
+                    req_func = self.session.post
+                else:
+                    raise NotImplementedError
 
-            async with req_func(url, timeout=180, params=params, json=body) as resp:
-                if resp.status != 200:
-                    raise CrawlerException(f"Error code {str(resp.status)} on {url}")
-                data = await resp.read()
-                try:
-                    return json.loads(data)
-                except (json.JSONDecodeError, UnicodeDecodeError) as err:
-                    raise CrawlerException(
-                        f"Cannot decode JSON on {url} ({err})"
-                    ) from err
-        except aiohttp.ClientError as err:
-            raise CrawlerException(f"{err}") from err
-        except asyncio.TimeoutError as err:
-            raise CrawlerException(f"Connection to {url} timed out") from err
-        except ValueError as err:
-            if err.args[0] == "Can redirect only to http or https":
-                raise CrawlerException("Invalid redirect") from err
-            raise
+                async with req_func(url, timeout=180, params=params, json=body) as resp:
+                    if resp.status != 200:
+                        raise CrawlerException(
+                            f"Error code {str(resp.status)} on {url}"
+                        )
+                    data = await resp.read()
+                    try:
+                        return json.loads(data)
+                    except (json.JSONDecodeError, UnicodeDecodeError) as err:
+                        raise CrawlerException(
+                            f"Cannot decode JSON on {url} ({err})"
+                        ) from err
+            except aiohttp.ClientError as err:
+                raise CrawlerException(f"{err}") from err
+            except asyncio.TimeoutError as err:
+                raise CrawlerException(f"Connection to {url} timed out") from err
+            except ValueError as err:
+                if err.args[0] == "Can redirect only to http or https":
+                    raise CrawlerException("Invalid redirect") from err
+                raise
 
     @staticmethod
     def compress_csv_files():
