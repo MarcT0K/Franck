@@ -10,7 +10,14 @@ setup(
     packages=find_packages(),
     license="GPLv3",
     python_requires=">=3.8",
-    install_requires=["aiohttp[speedups]", "tqdm", "scipy", "pandas", "fastparquet"],
+    install_requires=[
+        "aiohttp[speedups]",
+        "tqdm",
+        "scipy",
+        "pandas",
+        "fastparquet",
+        "colorlog",
+    ],
     entry_points={
         "console_scripts": [
             "franck = franck.cli:main",
