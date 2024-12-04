@@ -47,7 +47,7 @@ class PeertubeCrawler(FederationCrawler):
             instance_dict.update(info_dict)
 
             config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
-            instance_dict["serverVersion"] = config_dict["serverVersion"]
+            instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
 
             # Fetch instance followers
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
@@ -87,7 +87,13 @@ class PeertubeCrawler(FederationCrawler):
             )
 
         except CrawlerException as err:
-            instance_dict["error"] = str(err)
+            str_err = str(err)
+            instance_dict["error"] = str_err
+            self.logger.debug("Error with instance " + host + " : " + str_err)
+        except KeyError as err:
+            str_err = "Missing key in the JSON " + str(err)
+            instance_dict["error"] = str_err
+            self.logger.debug("Error with instance " + host + " : " + str_err)
 
         async with self.info_csv_lock:
             with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
