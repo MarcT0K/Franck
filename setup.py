@@ -16,6 +16,7 @@ setup(
         "scipy",
         "pandas",
         "fastparquet",
+        "requests",
         "colorlog",
     ],
     entry_points={

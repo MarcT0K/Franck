@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 import aiohttp
 import colorlog
 import pandas as pd
+import requests
+
 from tqdm.asyncio import tqdm
 
 
@@ -28,17 +30,20 @@ class CrawlerException(Exception):
 
 async def fetch_fediverse_instance_list(software):
     # GraphQL query
-    body = f"""{{
-        nodes(softwarename:"{software}", status:"UP") {{
-            domain
-        }}
-        }}"""
+    body = '''{nodes(softwarename:"''' + software + """" status: "UP"){domain}}"""
 
-    async with aiohttp.ClientSession() as session:
-        resp = await session.post(
+    try:
+        async with aiohttp.ClientSession() as session:
+            resp = await session.post(
+                "https://api.fediverse.observer", json={"query": body}, timeout=300
+            )
+            data = await resp.read()
+            data = json.loads(data)
+    except json.decoder.JSONDecodeError:  # Sometimes, Cloudflare blocks aiohttp
+        resp = requests.post(
             "https://api.fediverse.observer", json={"query": body}, timeout=300
         )
-        data = json.loads(await resp.read())
+        data = resp.json()
     return [instance["domain"] for instance in data["data"]["nodes"]]
 
 
