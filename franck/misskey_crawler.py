@@ -44,18 +44,12 @@ class MisskeyTopUserCrawler(Crawler):
 
         self.nb_top_users = nb_top_users
 
-        self.instances_file_lock = self.init_csv_file(
-            self.INSTANCES_CSV, self.INSTANCES_FIELDS
-        )
-        self.follows_file_lock = self.init_csv_file(
-            self.FOLLOWS_CSV, self.FOLLOWS_FIELDS
-        )
-        self.crawled_follows_lock = self.init_csv_file(
-            self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS
-        )
-        self.crawled_users_lock = self.init_csv_file(
-            self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS
-        )
+        self.csv_information = [
+            (self.INSTANCES_CSV, self.INSTANCES_FIELDS),
+            (self.FOLLOWS_CSV, self.FOLLOWS_FIELDS),
+            (self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS),
+            (self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS),
+        ]
 
     async def inspect_instance(self, host):
         try:
@@ -98,7 +92,7 @@ class MisskeyTopUserCrawler(Crawler):
             "posts_count": stats_dict["originalNotesCount"],
         }
 
-        async with self.instances_file_lock:
+        async with self.csv_locks[self.INSTANCES_CSV]:
             with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
                 writer.writerow(instance_dict)
@@ -129,7 +123,7 @@ class MisskeyTopUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.crawled_users_lock:
+        async with self.csv_locks[self.CRAWLED_USERS_CSV]:
             with open(self.CRAWLED_USERS_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.CRAWLED_USERS_FIELDS)
                 for user in users:
@@ -183,7 +177,7 @@ class MisskeyTopUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.crawled_follows_lock:
+        async with self.csv_locks[self.CRAWLED_FOLLOWS_CSV]:
             with open(self.CRAWLED_FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)
                 for follow in follow_dicts:

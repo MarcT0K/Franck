@@ -8,7 +8,7 @@ import os
 from abc import abstractmethod
 from csv import DictReader, DictWriter
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import aiohttp
 import colorlog
@@ -56,21 +56,25 @@ class Crawler:
         urls: List[str],
     ):
         # Create the result folder
-        result_dir = (
+        self.result_dir = (
             self.SOFTWARE
             + "_"
             + self.CRAWL_SUBJECT
             + "_"
             + datetime.now().strftime("%Y%m%d-%H%M%S")
         )
-        os.mkdir(result_dir)
-        os.chdir(result_dir)
 
         # Load balacing
         self.concurrent_connection_sem = asyncio.Semaphore(1000)
 
+        # CSV locks
+        self.csv_locks: Dict[str, asyncio.Lock] = {}
+        self.csv_information: List[Tuple[str, List[str]]] = []
+
         # Initialize HTTP session
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(
+            headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
+        )
 
         self.urls = urls
 
@@ -106,12 +110,15 @@ class Crawler:
         fhandler.setLevel(logging.DEBUG)
         self.logger.addHandler(fhandler)
 
-    @staticmethod
-    def init_csv_file(filename, fields) -> asyncio.Lock:
+    def _init_csv_file(self, filename, fields):
         with open(filename, "w", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=fields)
             writer.writeheader()
-        return asyncio.Lock()
+        self.csv_locks[filename] = asyncio.Lock()
+
+    def init_all_files(self):
+        for filename, fields in self.csv_information:
+            self._init_csv_file(filename, fields)
 
     @abstractmethod
     async def inspect_instance(self, host: str):
@@ -131,6 +138,10 @@ class Crawler:
     async def launch(self):
         """Launch the crawl"""
 
+        os.mkdir(self.result_dir)
+        os.chdir(self.result_dir)
+        self.init_all_files()
+
         if not self.urls:
             raise CrawlerException("No URL to crawl")
 
@@ -145,6 +156,8 @@ class Crawler:
         self.data_cleaning()
         Crawler.compress_csv_files()
         self.logger.info("Done.")
+
+        os.chdir("../")
 
     async def close(self):
         await self.session.close()
@@ -234,12 +247,10 @@ class FederationCrawler(Crawler):
 
         assert self.INSTANCES_CSV_FIELDS is not None
 
-        self.info_csv_lock = Crawler.init_csv_file(
-            self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS
-        )
-        self.link_csv_lock = Crawler.init_csv_file(
-            self.FOLLOWERS_FILENAME, self.FOLLOWERS_CSV_FIELDS
-        )
+        self.csv_information = [
+            (self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS),
+            (self.FOLLOWERS_FILENAME, self.FOLLOWERS_CSV_FIELDS),
+        ]
 
     @abstractmethod
     async def inspect_instance(self, host: str):

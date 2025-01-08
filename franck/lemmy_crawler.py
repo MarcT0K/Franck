@@ -105,12 +105,12 @@ class LemmyFederationCrawler(FederationCrawler):
         except CrawlerException as err:
             instance_dict["error"] = str(err)
 
-        async with self.info_csv_lock:
+        async with self.csv_locks[self.INSTANCES_FILENAME]:
             with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
-        async with self.link_csv_lock:
+        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
             with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
                 for dest in linked_instances:
@@ -158,21 +158,13 @@ class LemmyCommunityCrawler(Crawler):
         self.activity_scope = activity_scope
         self.min_active_user_per_community = min_active_user_per_community
 
-        self.interation_file_lock = Crawler.init_csv_file(
-            self.INTERACTIONS_CSV, self.INTERACTIONS_FIELDS
-        )
-        self.intra_inst_lock = Crawler.init_csv_file(
-            self.INTRA_INSTANCE_CSV, self.CSV_FIELDS
-        )
-        self.cross_inst_lock = Crawler.init_csv_file(
-            self.CROSS_INSTANCE_CSV, self.CSV_FIELDS
-        )
-        self.community_act_lock = Crawler.init_csv_file(
-            self.COMMUNITY_ACTIVITY_CSV, self.COMMUNITY_ACTIVITY_FIELDS
-        )
-        self.community_own_lock = Crawler.init_csv_file(
-            self.COMMUNITY_OWNERSHIP_CSV, self.COMMUNITY_OWNERSHIP_FIELDS
-        )
+        self.csv_information = [
+            (self.INTERACTIONS_CSV, self.INTERACTIONS_FIELDS),
+            (self.INTRA_INSTANCE_CSV, self.CSV_FIELDS),
+            (self.CROSS_INSTANCE_CSV, self.CSV_FIELDS),
+            (self.COMMUNITY_ACTIVITY_CSV, self.COMMUNITY_ACTIVITY_FIELDS),
+            (self.COMMUNITY_OWNERSHIP_CSV, self.COMMUNITY_OWNERSHIP_FIELDS),
+        ]
 
     async def inspect_instance(self, host):
         communities = []
@@ -248,7 +240,7 @@ class LemmyCommunityCrawler(Crawler):
                 new_communities.append(current_community)
                 local_communities.append(community["community"]["name"])
 
-            async with self.community_own_lock:
+            async with self.csv_locks[self.COMMUNITY_OWNERSHIP_CSV]:
                 with open(
                     self.COMMUNITY_OWNERSHIP_CSV, "a", encoding="utf-8"
                 ) as csv_file:
@@ -298,7 +290,7 @@ class LemmyCommunityCrawler(Crawler):
 
                 new_posts.append(current)
 
-            async with self.interation_file_lock:
+            async with self.csv_locks[self.INTERACTIONS_CSV]:
                 with open(self.INTERACTIONS_CSV, "a", encoding="utf-8") as csv_file:
                     writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_FIELDS)
                     for post_dict in new_posts:
