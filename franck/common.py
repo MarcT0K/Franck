@@ -63,6 +63,7 @@ class Crawler:
             + "_"
             + datetime.now().strftime("%Y%m%d-%H%M%S")
         )
+        os.mkdir(self.result_dir)
 
         # Load balacing
         self.concurrent_connection_sem = asyncio.Semaphore(1000)
@@ -102,7 +103,12 @@ class Crawler:
         handler.setLevel(logging.INFO)
         self.logger.addHandler(handler)
         fhandler = logging.FileHandler(
-            "crawl_" + self.SOFTWARE + "_" + self.CRAWL_SUBJECT + ".log"
+            self.result_dir
+            + "/crawl_"
+            + self.SOFTWARE
+            + "_"
+            + self.CRAWL_SUBJECT
+            + ".log"
         )
         fhandler.setFormatter(
             logging.Formatter("[%(asctime)s %(levelname)s] %(message)s")
@@ -138,7 +144,6 @@ class Crawler:
     async def launch(self):
         """Launch the crawl"""
 
-        os.mkdir(self.result_dir)
         os.chdir(self.result_dir)
         self.init_all_files()
 

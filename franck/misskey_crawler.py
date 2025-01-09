@@ -15,7 +15,7 @@ class MisskeyTopUserCrawler(Crawler):
     CRAWL_SUBJECT = "top_user"
 
     INSTANCES_CSV = "instances.csv"
-    INSTANCES_FIELDS = ["instance", "users_count", "posts_count"]
+    INSTANCES_FIELDS = ["instance", "users_count", "posts_count", "error"]
     FOLLOWS_CSV = "follows.csv"
     FOLLOWS_FIELDS = ["Source", "Target", "Weight"]
 
@@ -82,20 +82,22 @@ class MisskeyTopUserCrawler(Crawler):
 
     async def _fetch_instance_stats(self, host):
         # https://misskey.io/api/stats
-        stats_dict = await self._fetch_json(
-            "https://" + host + "/api/stats", body={}, op="POST"
-        )
+        instance_dict = {"instance": host}
+        try:
+            stats_dict = await self._fetch_json(
+                "https://" + host + "/api/stats", body={}, op="POST"
+            )
 
-        instance_dict = {
-            "instance": host,
-            "users_count": stats_dict["originalUsersCount"],
-            "posts_count": stats_dict["originalNotesCount"],
-        }
+            instance_dict["users_count"] = (stats_dict["originalUsersCount"],)
+            instance_dict["posts_count"] = (stats_dict["originalNotesCount"],)
 
-        async with self.csv_locks[self.INSTANCES_CSV]:
-            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
-                writer.writerow(instance_dict)
+        except Exception as err:
+            instance_dict["error"] = str(err)
+            async with self.csv_locks[self.INSTANCES_CSV]:
+                with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
+                    writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
+                    writer.writerow(instance_dict)
+            raise err
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
