@@ -15,6 +15,7 @@ import colorlog
 import pandas as pd
 import requests
 
+from aiohttp_retry import RetryClient, ExponentialRetry
 from tqdm.asyncio import tqdm
 
 
@@ -73,8 +74,12 @@ class Crawler:
         self.csv_information: List[Tuple[str, List[str]]] = []
 
         # Initialize HTTP session
-        self.session = aiohttp.ClientSession(
+        aiohttp_session = aiohttp.ClientSession(
             headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
+        )
+        retry_options = ExponentialRetry(attempts=3)
+        self.session = RetryClient(
+            client_session=aiohttp_session, retry_options=retry_options
         )
 
         self.urls = urls

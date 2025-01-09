@@ -12,6 +12,7 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "aiohttp[speedups]",
+        "aiohttp_retry",
         "tqdm",
         "scipy",
         "pandas",
