@@ -140,7 +140,9 @@ class LemmyCommunityCrawler(Crawler):
         "post_id",
     ]
 
-    def __init__(self, urls, activity_scope="TopWeek", min_active_user_per_community=5):
+    def __init__(
+        self, urls, activity_scope="TopMonth", min_active_user_per_community=5
+    ):
         super().__init__(urls)
         if activity_scope not in ("TopDay", "TopWeek", "TopMonth"):
             raise CrawlerException("Invalid activity window.")

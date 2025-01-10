@@ -95,7 +95,7 @@ class MastodonActiveUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 80
 
-    def __init__(self, urls, nb_active_users=100):
+    def __init__(self, urls, nb_active_users=10000):
         super().__init__(urls)
 
         self.nb_active_users = nb_active_users
