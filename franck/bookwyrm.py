@@ -23,13 +23,13 @@ class BookwyrmFederationCrawler(FederationCrawler):
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
-        linked_instances = []
+        connected_instances = []
         try:
             info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
             instance_dict["registration_enabled"] = info_dict["registrations"]
 
-            linked_instances = list(
+            connected_instances = list(
                 await self._fetch_json("http://" + host + "/api/v1/instance/peers")
             )
 
@@ -37,7 +37,7 @@ class BookwyrmFederationCrawler(FederationCrawler):
             instance_dict["error"] = str(err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_linked_instance(host, linked_instances)
+        await self._write_connected_instance(host, connected_instances)
 
 
 async def launch_bookwyrm_crawl():

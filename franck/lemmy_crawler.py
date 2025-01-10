@@ -40,7 +40,7 @@ class LemmyFederationCrawler(FederationCrawler):
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
-        linked_instances = []
+        connected_instances = []
         blocked_instances = []
 
         try:
@@ -82,7 +82,7 @@ class LemmyFederationCrawler(FederationCrawler):
             if "federated_instances" in info_dict.keys():
                 # Once again, the API evolved between the versions
                 if info_dict["federated_instances"]["linked"] is not None:
-                    linked_instances = info_dict["federated_instances"]["linked"]
+                    connected_instances = info_dict["federated_instances"]["linked"]
                 if info_dict["federated_instances"]["blocked"] is not None:
                     blocked_instances = info_dict["federated_instances"]["blocked"]
             else:
@@ -92,7 +92,7 @@ class LemmyFederationCrawler(FederationCrawler):
                     )
 
                     federated_instances = instances_resp["federated_instances"]
-                    linked_instances = [
+                    connected_instances = [
                         instance["domain"]
                         for instance in federated_instances["linked"]
                         if instance.get("software") == "lemmy"
@@ -106,7 +106,9 @@ class LemmyFederationCrawler(FederationCrawler):
             instance_dict["error"] = str(err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_linked_instance(host, linked_instances, blocked_instances)
+        await self._write_connected_instance(
+            host, connected_instances, blocked_instances
+        )
 
 
 class LemmyCommunityCrawler(Crawler):

@@ -275,16 +275,16 @@ class FederationCrawler(Crawler):
                 writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
-    async def _write_linked_instance(
+    async def _write_connected_instance(
         self,
         host: str,
-        linked_instances: List[str],
+        connected_instances: List[str],
         blocked_instances: Optional[List[str]] = None,
     ):
         async with self.csv_locks[self.FOLLOWERS_FILENAME]:
             with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-                for dest in set(linked_instances):
+                for dest in set(connected_instances):
                     writer.writerow({"Source": host, "Target": dest, "Weight": 1})
 
                 if blocked_instances is not None:

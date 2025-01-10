@@ -98,7 +98,7 @@ class PeertubeCrawler(FederationCrawler):
             self.logger.debug("Error with instance " + host + " : " + str_err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_linked_instance(host, follower_links)
+        await self._write_connected_instance(host, follower_links)
 
     def post_round(self):
         seen = set()

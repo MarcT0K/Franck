@@ -29,7 +29,7 @@ class MisskeyFederationCrawler(FederationCrawler):
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
-        linked_instances = []
+        connected_instances = []
 
         try:
 
@@ -46,16 +46,16 @@ class MisskeyFederationCrawler(FederationCrawler):
                     op="POST",
                 )
 
-                new_linked_instances = [
+                new_connected_instances = [
                     inst_dict["host"]
                     for inst_dict in resp
                     if inst_dict["softwareName"] == "misskey"
                 ]
                 # The conditions limits the number of false positive entries that need to be cleaned later.
 
-                linked_instances += new_linked_instances
+                connected_instances += new_connected_instances
 
-                if len(linked_instances) > 10**6:
+                if len(connected_instances) > 10**6:
                     raise ValueError("Infinite loop problem")
 
                 if len(resp) < self.MAX_PAGE_SIZE:
@@ -69,7 +69,7 @@ class MisskeyFederationCrawler(FederationCrawler):
             instance_dict["error"] = str(err)
 
         await self._write_instance_csv(instance_dict=instance_dict)
-        await self._write_linked_instance(host, linked_instances)
+        await self._write_connected_instance(host, connected_instances)
 
 
 class MisskeyTopUserCrawler(Crawler):

@@ -35,7 +35,7 @@ class MastodonFederationCrawler(FederationCrawler):
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
         instance_dict = {"host": host}
-        linked_instances = []
+        connected_instances = []
         # blocked_instances = []
 
         try:
@@ -47,7 +47,7 @@ class MastodonFederationCrawler(FederationCrawler):
                 "enabled"
             ]
 
-            linked_instances = await self._fetch_json(
+            connected_instances = await self._fetch_json(
                 "http://" + host + "/api/v1/instance/peers"
             )
             # blocked_instances = await self._fetch_json(
@@ -57,7 +57,7 @@ class MastodonFederationCrawler(FederationCrawler):
             instance_dict["error"] = str(err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_linked_instance(host, linked_instances)
+        await self._write_connected_instance(host, connected_instances)
 
 
 class MastodonActiveUserCrawler(Crawler):
