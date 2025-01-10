@@ -4,10 +4,78 @@ import asyncio
 
 from csv import DictWriter, DictReader
 
-from .common import Crawler, CrawlerException, fetch_fediverse_instance_list
+from .common import (
+    Crawler,
+    CrawlerException,
+    FederationCrawler,
+    fetch_fediverse_instance_list,
+)
 
 
 DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
+
+
+class MisskeyFederationCrawler(FederationCrawler):
+    SOFTWARE = "misskey"
+    INSTANCES_CSV_FIELDS = [
+        "host",
+        "error",
+        "Id",
+        "Label",
+    ]
+
+    MAX_PAGE_SIZE = 30
+
+    async def inspect_instance(self, host: str):
+        assert self.INSTANCES_CSV_FIELDS is not None
+        instance_dict = {"host": host}
+        linked_instances = []
+
+        try:
+
+            offset = 0
+            while True:
+                body = {
+                    "limit": self.MAX_PAGE_SIZE,
+                    "offset": offset,
+                    "sort": "+users",
+                }
+                resp = await self._fetch_json(
+                    "https://" + host + "/api/federation/instances", body=body
+                )
+
+                new_linked_instances = [
+                    inst_dict["host"]
+                    for inst_dict in resp
+                    if inst_dict["softwareName"] == "misskey"
+                ]
+                # The conditions limits the number of false positive entries that need to be cleaned later.
+
+                linked_instances += new_linked_instances
+
+                if len(linked_instances) > 10**6:
+                    raise ValueError("Infinite loop problem")
+
+                if len(resp) < self.MAX_PAGE_SIZE:
+                    break
+
+                offset += self.MAX_PAGE_SIZE
+
+                await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+
+        except CrawlerException as err:
+            instance_dict["error"] = str(err)
+
+        async with self.csv_locks[self.INSTANCES_FILENAME]:
+            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
+                writer.writerow(instance_dict)
+
+        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
+            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
+                for dest in set(linked_instances):
+                    writer.writerow({"Source": host, "Target": dest, "Weight": 1})
 
 
 class MisskeyTopUserCrawler(Crawler):
@@ -58,7 +126,6 @@ class MisskeyTopUserCrawler(Crawler):
             self.logger.debug(
                 "Error while crawling the stats of %s: %s", host, str(err)
             )
-            return
 
         try:
             users = await self._crawl_user_list(host)
@@ -212,6 +279,10 @@ class MisskeyTopUserCrawler(Crawler):
 
 async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
+    start_urls = ["misskey.io", "misskey.design"]
 
-    async with MisskeyTopUserCrawler(start_urls) as crawler:
+    async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
+
+    # async with MisskeyTopUserCrawler(start_urls) as crawler:
+    #     await crawler.launch()

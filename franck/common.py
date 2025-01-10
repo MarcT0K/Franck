@@ -212,9 +212,9 @@ class Crawler:
 
                 async with req_func(url, timeout=180, params=params, json=body) as resp:
                     if resp.status != 200:
-                        raise CrawlerException(
-                            f"Error code {str(resp.status)} on {url}"
-                        )
+                        err_msg = f"Error code {str(resp.status)} on {url}"
+                        self.logger.error(err_msg)
+                        raise CrawlerException(err_msg)
                     data = await resp.read()
                     try:
                         return json.loads(data)
