@@ -37,6 +37,9 @@ For each software, we have a different definition of the interaction.
 For example, an interaction can be simply that the servers are connected (like on Peertube) or  an interaction can be a user from Server A following a user from server B (like on Mastodon).
 [DOCS.md](DOCS.md) details all the graphs built by `franck`.
 
+Our graphs contain only aggregated information about the servers.
+Thus, our graphs **reveal no personal information about the users**.
+
 We output CSV and parquet files.
 The format of the CSV files storing the graphs is compatible with [Gephi](https://gephi.org/) (a graph visualization software).
 Thus, our results can directly be visualized after the crawl.
