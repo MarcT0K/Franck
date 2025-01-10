@@ -146,6 +146,11 @@ class Crawler:
     @abstractmethod
     def data_cleaning(self): ...
 
+    async def __inspect_instance_with_logging(self, url):
+        self.logger.info("Start inspecting instance %s", url)
+        await self.inspect_instance(url)
+        self.logger.info("Finished inspecting instance %s", url)
+
     async def launch(self):
         """Launch the crawl"""
 
@@ -156,7 +161,7 @@ class Crawler:
             raise CrawlerException("No URL to crawl")
 
         self.logger.info("Crawl begins...")
-        tasks = [self.inspect_instance(url) for url in self.urls]
+        tasks = [self.__inspect_instance_with_logging(url) for url in self.urls]
 
         for task in tqdm.as_completed(tasks):
             await task

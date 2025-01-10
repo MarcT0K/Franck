@@ -102,8 +102,6 @@ class PeertubeCrawler(FederationCrawler):
         await self._write_instance_csv(instance_dict)
         await self._write_linked_instance(host, follower_links)
 
-        self.logger.debug("Finished crawling of " + host)
-
     def post_round(self):
         seen = set()
 
