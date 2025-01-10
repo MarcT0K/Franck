@@ -1,7 +1,5 @@
 """friendica Graph Crawler"""
 
-from csv import DictWriter
-
 from .common import (
     CrawlerException,
     FederationCrawler,

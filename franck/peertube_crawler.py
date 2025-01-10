@@ -1,7 +1,5 @@
 "Peertube graph crawler"
 import fileinput
-from csv import DictWriter
-
 from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
 
