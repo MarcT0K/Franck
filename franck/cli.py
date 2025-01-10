@@ -2,6 +2,7 @@ import asyncio
 
 from argparse import ArgumentParser
 
+from .bookwyrm import launch_bookwyrm_crawl
 from .friendica import launch_friendica_crawl
 from .lemmy_crawler import launch_lemmy_crawl
 from .mastodon_crawler import launch_mastodon_crawl
@@ -14,6 +15,7 @@ SOFTWARE_LAUNCH = {
     "misskey": launch_misskey_crawl,
     "mastodon": launch_mastodon_crawl,
     "friendica": launch_friendica_crawl,
+    "bookwyrm": launch_bookwyrm_crawl,
 }
 
 
@@ -27,7 +29,7 @@ def main():
     crawl_parser.add_argument(
         "software",
         help="Fediverse software subject of the crawl",
-        choices=["peertube", "lemmy", "misskey", "mastodon", "friendica"],
+        choices=["peertube", "lemmy", "misskey", "mastodon", "friendica", "bookwyrm"],
     )
     args = parser.parse_args()
 
