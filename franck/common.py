@@ -250,12 +250,10 @@ class FederationCrawler(Crawler):
     INSTANCES_FILENAME = "instances.csv"
     FOLLOWERS_FILENAME = "followers.csv"
     FOLLOWERS_CSV_FIELDS = ["Source", "Target", "Weight"]
-    INSTANCES_CSV_FIELDS: Optional[List[str]] = None
+    INSTANCES_CSV_FIELDS: List[str] = ["host", "error", "Id", "Label"]
 
     def __init__(self, urls: List[str]):
         super().__init__(urls)
-
-        assert self.INSTANCES_CSV_FIELDS is not None
 
         self.csv_information = [
             (self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS),
@@ -265,6 +263,28 @@ class FederationCrawler(Crawler):
     @abstractmethod
     async def inspect_instance(self, host: str):
         raise NotImplementedError
+
+    async def _write_instance_csv(self, instance_dict):
+        async with self.csv_locks[self.INSTANCES_FILENAME]:
+            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
+                writer.writerow(instance_dict)
+
+    async def _write_linked_instance(
+        self,
+        host: str,
+        linked_instances: List[str],
+        blocked_instances: Optional[List[str]] = None,
+    ):
+        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
+            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
+                for dest in set(linked_instances):
+                    writer.writerow({"Source": host, "Target": dest, "Weight": 1})
+
+                if blocked_instances is not None:
+                    for dest in set(blocked_instances):
+                        writer.writerow({"Source": host, "Target": dest, "Weight": -1})
 
     def data_cleaning(self):
         """Clean the final result file."""

@@ -66,16 +66,8 @@ class MisskeyFederationCrawler(FederationCrawler):
         except CrawlerException as err:
             instance_dict["error"] = str(err)
 
-        async with self.csv_locks[self.INSTANCES_FILENAME]:
-            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
-                writer.writerow(instance_dict)
-
-        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
-            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-                for dest in set(linked_instances):
-                    writer.writerow({"Source": host, "Target": dest, "Weight": 1})
+        await self._write_instance_csv(instance_dict=instance_dict)
+        await self._write_linked_instance(host, linked_instances)
 
 
 class MisskeyTopUserCrawler(Crawler):
@@ -279,10 +271,10 @@ class MisskeyTopUserCrawler(Crawler):
 
 async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
-    start_urls = ["misskey.io", "misskey.design"]
+    # start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
 
     async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
 
-    # async with MisskeyTopUserCrawler(start_urls) as crawler:
-    #     await crawler.launch()
+    async with MisskeyTopUserCrawler(start_urls) as crawler:
+        await crawler.launch()

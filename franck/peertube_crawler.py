@@ -99,16 +99,9 @@ class PeertubeCrawler(FederationCrawler):
             instance_dict["error"] = str_err
             self.logger.debug("Error with instance " + host + " : " + str_err)
 
-        async with self.csv_locks[self.INSTANCES_FILENAME]:
-            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
-                writer.writerow(instance_dict)
+        await self._write_instance_csv(instance_dict)
+        await self._write_linked_instance(host, follower_links)
 
-        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
-            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-                for source, dest in follower_links:
-                    writer.writerow({"Source": source, "Target": dest})
         self.logger.debug("Finished crawling of " + host)
 
     def post_round(self):
