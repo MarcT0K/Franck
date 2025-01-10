@@ -106,7 +106,7 @@ class MastodonActiveUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 80
 
-    def __init__(self, urls, nb_active_users=10):
+    def __init__(self, urls, nb_active_users=100):
         super().__init__(urls)
 
         self.nb_active_users = nb_active_users
@@ -119,8 +119,8 @@ class MastodonActiveUserCrawler(Crawler):
         ]
 
     async def _fetch_json_with_pagination(
-        self, url: str, max_id=None
-    ) -> Tuple[Dict[str, Any], Optional[int]]:
+        self, url: str, params=None
+    ) -> Tuple[Dict[str, Any], Optional[str]]:
         """Query an instance API and returns the resulting JSON along with the next page URL
 
         Args:
@@ -131,9 +131,11 @@ class MastodonActiveUserCrawler(Crawler):
         Returns:
             Dict: dictionary containing the JSON response.
         """
-        params = {"limit": self.MAX_PAGE_SIZE}
-        if max_id is not None:
-            params["max_id"] = max_id
+        if params is None:
+            params = {}
+        if "limit" not in params:
+            params["limit"] = self.MAX_PAGE_SIZE
+
         self.logger.debug("Fetching (with pagination) %s [params:%s]", url, str(params))
 
         next_max_id = None
@@ -185,10 +187,10 @@ class MastodonActiveUserCrawler(Crawler):
 
         for ind, user in enumerate(users):
             self.logger.debug(
-                "Instance %s: %d users our of %d crawled", host, ind, len(users)
+                "Instance %s: %d users out of %d crawled", host, ind + 1, len(users)
             )
             try:
-                if user["followers_count"] > 0:
+                if user["following_count"] > 0:
                     await self._crawl_user_interactions(host, user)
             except CrawlerException as err:
                 self.logger.debug(
@@ -229,7 +231,6 @@ class MastodonActiveUserCrawler(Crawler):
             nb_missing_users = self.nb_active_users - len(users)
             params = {
                 "limit": min(self.MAX_PAGE_SIZE, nb_missing_users),
-                "offset": offset,
                 "local": "true",
                 "order": "active",
             }
@@ -266,37 +267,39 @@ class MastodonActiveUserCrawler(Crawler):
     async def _crawl_user_interactions(self, host, user_info):
         follow_dicts = {}
 
-        next_max_id = None
+        max_id = None
         while True:
-            resp, next_max_id = await self._fetch_json_with_pagination(
-                f"https://{host}/api/v1/accounts/{user_info['id']}/followers",
-                max_id=next_max_id,
+            params = {"max_id": max_id} if max_id is not None else None
+            resp, max_id = await self._fetch_json_with_pagination(
+                f"https://{host}/api/v1/accounts/{user_info['id']}/following",
+                params=params,
             )
 
-            for follower_dict in resp:
+            for followee_dict in resp:
                 # NB: Sometimes, the API was returning some duplicates (idk why...)
                 #   Using a dictionary instead of a list avoid these duplicates
-                follow_dicts[follower_dict["username"]] = {
-                    "follower": follower_dict["username"],
-                    "follower_instance": (
-                        follower_dict["acct"].split("@")[1]
-                        if "@" in follower_dict["acct"]
+                follow_dicts[followee_dict["username"]] = {
+                    "followee": followee_dict["username"],
+                    "followee_instance": (
+                        followee_dict["acct"].split("@")[1]
+                        if "@" in followee_dict["acct"]
                         else host
                     ),
-                    "followee": user_info["username"],
-                    "followee_instance": host,
+                    "follower": user_info["username"],
+                    "follower_instance": host,
                 }
 
-            if len(follow_dicts) > user_info["followers_count"]:
-                raise ValueError(
-                    "Found %s followers instead of %s for user %s",
-                    len(follow_dicts),
-                    user_info["followers_count"],
-                    user_info["username"],
-                )
+            # if len(follow_dicts) > user_info["following_count"]: # Had problems when the users were following/unfollowing during the crawl
+            #     raise ValueError(
+            #         "Found %s followees instead of %s for user %s",
+            #         len(follow_dicts),
+            #         user_info["following_count"],
+            #         user_info["username"],
+            #         list(follow_dicts.keys()),
+            #     )
 
-            if len(resp) < self.MAX_PAGE_SIZE:
-                if len(follow_dicts) < user_info["followers_count"]:
+            if max_id is None:
+                if len(follow_dicts) == 0 and user_info["following_count"] != 0:
                     self.logger.debug(
                         "User %s@%s set its follower list as private.",
                         user_info["username"],
@@ -338,11 +341,11 @@ class MastodonActiveUserCrawler(Crawler):
 
 
 async def launch_mastodon_crawl():
-    start_urls = await fetch_fediverse_instance_list("lemmy")
-    start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
+    start_urls = await fetch_fediverse_instance_list("mastodon")
+    # start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
 
-    # async with MastodonFederationCrawler(start_urls) as crawler:
-    #     await crawler.launch()
+    async with MastodonFederationCrawler(start_urls) as crawler:
+        await crawler.launch()
 
     async with MastodonActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
