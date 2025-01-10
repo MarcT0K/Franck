@@ -41,7 +41,9 @@ class MisskeyFederationCrawler(FederationCrawler):
                     "sort": "+users",
                 }
                 resp = await self._fetch_json(
-                    "https://" + host + "/api/federation/instances", body=body
+                    "https://" + host + "/api/federation/instances",
+                    body=body,
+                    op="POST",
                 )
 
                 new_linked_instances = [
@@ -271,7 +273,7 @@ class MisskeyTopUserCrawler(Crawler):
 
 async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
-    # start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
+    start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
 
     async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
