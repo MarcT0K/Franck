@@ -19,6 +19,8 @@ class MisskeyFederationCrawler(FederationCrawler):
     SOFTWARE = "misskey"
     INSTANCES_CSV_FIELDS = [
         "host",
+        "users_count",
+        "posts_count",
         "error",
         "Id",
         "Label",
@@ -32,6 +34,11 @@ class MisskeyFederationCrawler(FederationCrawler):
         connected_instances = []
 
         try:
+            stats_dict = await self._fetch_json(
+                "https://" + host + "/api/stats", body={}, op="POST"
+            )
+            instance_dict["users_count"] = stats_dict["originalUsersCount"]
+            instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
             offset = 0
             while True:
@@ -101,7 +108,7 @@ class MisskeyTopUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 100
 
-    def __init__(self, urls, nb_top_users=10000):
+    def __init__(self, urls, nb_top_users=10):
         super().__init__(urls)
 
         self.nb_top_users = nb_top_users
@@ -114,12 +121,7 @@ class MisskeyTopUserCrawler(Crawler):
         ]
 
     async def inspect_instance(self, host):
-        try:
-            await self._fetch_instance_stats(host)
-        except CrawlerException as err:
-            self.logger.debug(
-                "Error while crawling the stats of %s: %s", host, str(err)
-            )
+        await self._fetch_instance_stats(host)
 
         try:
             users = await self._crawl_user_list(host)
@@ -149,16 +151,16 @@ class MisskeyTopUserCrawler(Crawler):
                 "https://" + host + "/api/stats", body={}, op="POST"
             )
 
-            instance_dict["users_count"] = (stats_dict["originalUsersCount"],)
-            instance_dict["posts_count"] = (stats_dict["originalNotesCount"],)
+            instance_dict["users_count"] = stats_dict["originalUsersCount"]
+            instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
         except Exception as err:
             instance_dict["error"] = str(err)
-            async with self.csv_locks[self.INSTANCES_CSV]:
-                with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                    writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
-                    writer.writerow(instance_dict)
-            raise err
+
+        async with self.csv_locks[self.INSTANCES_CSV]:
+            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
+                writer.writerow(instance_dict)
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
@@ -273,7 +275,7 @@ class MisskeyTopUserCrawler(Crawler):
 
 async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
-    # start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
+    start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
 
     async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()

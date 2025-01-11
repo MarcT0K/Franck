@@ -147,9 +147,9 @@ class Crawler:
     def data_cleaning(self): ...
 
     async def __inspect_instance_with_logging(self, url):
-        self.logger.info("Start inspecting instance %s", url)
+        self.logger.debug("Start inspecting instance %s", url)
         await self.inspect_instance(url)
-        self.logger.info("Finished inspecting instance %s", url)
+        self.logger.debug("Finished inspecting instance %s", url)
 
     async def launch(self):
         """Launch the crawl"""
