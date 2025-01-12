@@ -24,9 +24,12 @@ Moreover, we will repeat the crawling procedure during several months to observe
 Existing graphs datasets do not incorporate a temporal evolution, while such evolutions can have major impact in decentralized ML.
 Thus, our dataset provides the first graph dataset with a realistic temporal evolution.
 
-Finally, producing a dataset about the Fediverse could have a positive consequences on the Fediverse.
+Finally, producing a dataset about the Fediverse could have positive consequences on the Fediverse.
 Currently, the Fediverse is not seen as a valuable application area for ML research.
 Our dataset could bring some visibility to the Fediverse and some valuable ML systems may emerge (e.g., federated spam detection or content recommendation).
+
+While our research focus on privacy-preserving ML, our graphs could also find other unforeseen applications in other research fields such as sociology.
+However, our scientific background does not allow us to assess their relevance in such research field.
 
 ## Fediverse graphs
 
