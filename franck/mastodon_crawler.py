@@ -95,6 +95,7 @@ class MastodonActiveUserCrawler(Crawler):
     ]
 
     MAX_PAGE_SIZE = 80
+    MAX_ID_REGEX = r"max_id=(\d+)"
 
     def __init__(self, urls, nb_active_users=10000):
         super().__init__(urls)
@@ -141,7 +142,7 @@ class MastodonActiveUserCrawler(Crawler):
                         next_link = resp.headers["Link"].split(",")[
                             0
                         ]  # Extract the next page link
-                        max_id_regex = re.search(r"max_id=(\d+)", next_link)
+                        max_id_regex = re.search(self.MAX_ID_REGEX, next_link)
                         next_max_id = max_id_regex.group(1)
                     try:
                         return json.loads(data), next_max_id
@@ -191,7 +192,7 @@ class MastodonActiveUserCrawler(Crawler):
                 )
 
     async def _fetch_instance_info(self, host):
-        instance_dict = {}
+        instance_dict = {"host": host}
         try:
             info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
@@ -222,6 +223,7 @@ class MastodonActiveUserCrawler(Crawler):
                 "limit": min(self.MAX_PAGE_SIZE, nb_missing_users),
                 "local": "true",
                 "order": "active",
+                "offset": offset,
             }
             resp = await self._fetch_json(
                 "https://" + host + "/api/v1/directory", params=params
@@ -267,16 +269,15 @@ class MastodonActiveUserCrawler(Crawler):
             for followee_dict in resp:
                 # NB: Sometimes, the API was returning some duplicates (idk why...)
                 #   Using a dictionary instead of a list avoid these duplicates
-                followee_instance = followee_dict["acct"].split("@")[1]
-                        if "@" in followee_dict["acct"]
-                        else host
-                
-                if followee_dict not in self.crawled_instances:
-                    continue
+                followee_instance = (
+                    followee_dict["acct"].split("@")[1]
+                    if "@" in followee_dict["acct"]
+                    else host
+                )
 
                 follow_dicts[followee_dict["username"]] = {
                     "followee": followee_dict["username"],
-                    "followee_instance": followee_instance
+                    "followee_instance": followee_instance,
                     "follower": user_info["username"],
                     "follower_instance": host,
                 }

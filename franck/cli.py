@@ -8,6 +8,7 @@ from .lemmy_crawler import launch_lemmy_crawl
 from .mastodon_crawler import launch_mastodon_crawl
 from .misskey_crawler import launch_misskey_crawl
 from .peertube_crawler import launch_peertube_crawl
+from .pleroma_crawler import launch_pleroma_crawl
 
 SOFTWARE_LAUNCH = {
     "peertube": launch_peertube_crawl,
@@ -16,6 +17,7 @@ SOFTWARE_LAUNCH = {
     "mastodon": launch_mastodon_crawl,
     "friendica": launch_friendica_crawl,
     "bookwyrm": launch_bookwyrm_crawl,
+    "pleroma": launch_pleroma_crawl,
 }
 
 
@@ -29,7 +31,7 @@ def main():
     crawl_parser.add_argument(
         "software",
         help="Fediverse software subject of the crawl",
-        choices=["peertube", "lemmy", "misskey", "mastodon", "friendica", "bookwyrm"],
+        choices=list(SOFTWARE_LAUNCH.keys()),
     )
     args = parser.parse_args()
 

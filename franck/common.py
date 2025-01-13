@@ -157,11 +157,13 @@ class Crawler:
         os.chdir(self.result_dir)
         self.init_all_files()
 
-        if not self.urls:
+        if not self.crawled_instances:
             raise CrawlerException("No URL to crawl")
 
         self.logger.info("Crawl begins...")
-        tasks = [self.__inspect_instance_with_logging(url) for url in self.urls]
+        tasks = [
+            self.__inspect_instance_with_logging(url) for url in self.crawled_instances
+        ]
 
         for task in tqdm.as_completed(tasks):
             await task
