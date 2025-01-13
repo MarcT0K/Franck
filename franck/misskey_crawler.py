@@ -83,9 +83,7 @@ class MisskeyTopUserCrawler(Crawler):
     SOFTWARE = "misskey"
     CRAWL_SUBJECT = "top_user"
 
-    INSTANCES_CSV = "instances.csv"
     INSTANCES_FIELDS = ["instance", "users_count", "posts_count", "error"]
-    FOLLOWS_CSV = "follows.csv"
     FOLLOWS_FIELDS = ["Source", "Target", "Weight"]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
@@ -105,6 +103,8 @@ class MisskeyTopUserCrawler(Crawler):
         "posts_count",
         "lang",
     ]
+
+    TEMP_FILES = [CRAWLED_FOLLOWS_CSV, CRAWLED_USERS_CSV]
 
     MAX_PAGE_SIZE = 100
 
@@ -248,7 +248,7 @@ class MisskeyTopUserCrawler(Crawler):
                 for follow in follow_dicts:
                     writer.writerow(follow)
 
-    def data_cleaning(self):
+    def data_postprocessing(self):
         follows_dict = {}
         with open(self.CRAWLED_FOLLOWS_CSV, "r", encoding="utf-8") as csv_file:
             reader = DictReader(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)

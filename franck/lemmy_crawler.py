@@ -129,18 +129,23 @@ class LemmyCommunityCrawler(Crawler):
         "users_active_month",
     ]
 
-    CROSS_INSTANCE_CSV = "cross_instance_interactions.csv"
-    INTRA_INSTANCE_CSV = "intra_instance_interactions.csv"
-    CSV_FIELDS = ["Source", "Target", "Weight"]
+    CROSS_INSTANCE_INTERACTIONS_CSV = "cross_instance_interactions.csv"
+    INTRA_INSTANCE_INTERACTIONS_CSV = "intra_instance_interactions.csv"
+    INTERACTIONS_CSV = [
+        CROSS_INSTANCE_INTERACTIONS_CSV,
+        INTRA_INSTANCE_INTERACTIONS_CSV,
+    ]
 
-    INTERACTIONS_CSV = "interactions.csv"
-    INTERACTIONS_FIELDS = [
+    DETAILED_INTERACTIONS_CSV = "detailed_interactions.csv"
+    DETAILED_INTERACTIONS_FIELDS = [
         "user_instance",
         "community",
         "community_instance",
         "username",
         "post_id",
     ]
+
+    TEMP_FILES = [DETAILED_INTERACTIONS_CSV]
 
     def __init__(
         self, urls, activity_scope="TopMonth", min_active_user_per_community=5
@@ -152,9 +157,9 @@ class LemmyCommunityCrawler(Crawler):
         self.min_active_user_per_community = min_active_user_per_community
 
         self.csv_information = [
-            (self.INTERACTIONS_CSV, self.INTERACTIONS_FIELDS),
-            (self.INTRA_INSTANCE_CSV, self.CSV_FIELDS),
-            (self.CROSS_INSTANCE_CSV, self.CSV_FIELDS),
+            (self.DETAILED_INTERACTIONS_CSV, self.DETAILED_INTERACTIONS_FIELDS),
+            (self.INTRA_INSTANCE_INTERACTIONS_CSV, self.INTERACTIONS_CSV_FIELDS),
+            (self.CROSS_INSTANCE_INTERACTIONS_CSV, self.INTERACTIONS_CSV_FIELDS),
             (self.COMMUNITY_ACTIVITY_CSV, self.COMMUNITY_ACTIVITY_FIELDS),
             (self.COMMUNITY_OWNERSHIP_CSV, self.COMMUNITY_OWNERSHIP_FIELDS),
         ]
@@ -283,9 +288,13 @@ class LemmyCommunityCrawler(Crawler):
 
                 new_posts.append(current)
 
-            async with self.csv_locks[self.INTERACTIONS_CSV]:
-                with open(self.INTERACTIONS_CSV, "a", encoding="utf-8") as csv_file:
-                    writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_FIELDS)
+            async with self.csv_locks[self.DETAILED_INTERACTIONS_CSV]:
+                with open(
+                    self.DETAILED_INTERACTIONS_CSV, "a", encoding="utf-8"
+                ) as csv_file:
+                    writer = DictWriter(
+                        csv_file, fieldnames=self.DETAILED_INTERACTIONS_FIELDS
+                    )
                     for post_dict in new_posts:
                         writer.writerow(post_dict)
 
@@ -297,7 +306,7 @@ class LemmyCommunityCrawler(Crawler):
             page += 1
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-    def data_cleaning(self):
+    def data_postprocessing(self):
         # NB: No concurrent tasks so we do not need the locks
         community_list = []
         community_dict = {}
@@ -332,8 +341,8 @@ class LemmyCommunityCrawler(Crawler):
             (len(instance_list), len(community_list)), dtype=int
         )
 
-        with open(self.INTERACTIONS_CSV, "r", encoding="utf-8") as csv_file:
-            reader = DictReader(csv_file, fieldnames=self.INTERACTIONS_FIELDS)
+        with open(self.DETAILED_INTERACTIONS_CSV, "r", encoding="utf-8") as csv_file:
+            reader = DictReader(csv_file, fieldnames=self.DETAILED_INTERACTIONS_FIELDS)
             next(reader, None)  # Skip the CSV header
             for post_dict in reader:
                 instance = post_dict["user_instance"]
@@ -375,8 +384,8 @@ class LemmyCommunityCrawler(Crawler):
 
         # Write the two CSV storing possible weighted graphs between the active instances
         for csv_name, sp_mat in [
-            (self.CROSS_INSTANCE_CSV, cross_instance_mat),
-            (self.INTRA_INSTANCE_CSV, intra_instance_mat),
+            (self.CROSS_INSTANCE_INTERACTIONS_CSV, cross_instance_mat),
+            (self.INTRA_INSTANCE_INTERACTIONS_CSV, intra_instance_mat),
         ]:
             with open(csv_name, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.CSV_FIELDS)

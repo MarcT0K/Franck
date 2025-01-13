@@ -6,11 +6,8 @@
 
 Our crawler starts by fetching an instance list on [Fediverse Observer](https://fediverse.observer).
 Then, our crawler queries each of the instances one by one.
-During the crawl, some raw CSV files are produced: they contain all the instances and interactions that we have fetched.
-At the end of a crawl, these CSV are reanalyzed to produce clean output files only including the relevant instances and interactions.
-
-Along with each CSV "graph" file, we provide an CSV "instance" file listing all the instances with interesting information about them; e.g., number of users.
-The available information varies for each software.
+For each crawl, `franck` outputs at least one instance file `instances.csv` (listing information about the instances; the available information varies for each software) and one graph file `follows.csv` listing the graph edges with their respective weights.
+We also provide these files in `parquet` format to provide lighter versions of our files.
 
 ## Available graphs
 

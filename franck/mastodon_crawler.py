@@ -64,7 +64,6 @@ class MastodonActiveUserCrawler(Crawler):
     SOFTWARE = "mastodon"
     CRAWL_SUBJECT = "active_user"
 
-    INSTANCES_CSV = "instances.csv"
     INSTANCES_FIELDS = [
         "host",
         "version",
@@ -74,7 +73,6 @@ class MastodonActiveUserCrawler(Crawler):
         "registration_enabled",
         "error",
     ]
-    FOLLOWS_CSV = "follows.csv"
     FOLLOWS_FIELDS = ["Source", "Target", "Weight"]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
@@ -93,6 +91,8 @@ class MastodonActiveUserCrawler(Crawler):
         "following_count",
         "posts_count",
     ]
+
+    TEMP_FILES = [CRAWLED_FOLLOWS_CSV, CRAWLED_USERS_CSV]
 
     MAX_PAGE_SIZE = 80
     MAX_ID_REGEX = r"max_id=(\d+)"
@@ -308,7 +308,7 @@ class MastodonActiveUserCrawler(Crawler):
                 for follow in follow_dicts.values():
                     writer.writerow(follow)
 
-    def data_cleaning(self):
+    def data_postprocessing(self):
         follows_dict = {}
         with open(self.CRAWLED_FOLLOWS_CSV, "r", encoding="utf-8") as csv_file:
             reader = DictReader(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)

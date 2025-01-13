@@ -100,18 +100,6 @@ class PeertubeCrawler(FederationCrawler):
         await self._write_instance_csv(instance_dict)
         await self._write_connected_instance(host, follower_links)
 
-    def post_round(self):
-        seen = set()
-
-        # Remove duplicate rows
-        for line in fileinput.FileInput(self.FOLLOWERS_FILENAME, inplace=True):
-            prev_len = len(seen)
-            seen.add(line)
-            if len(seen) > prev_len:
-                print(line, end="")
-
-        super().post_round()
-
 
 async def launch_peertube_crawl():
     start_urls = await fetch_fediverse_instance_list("peertube")

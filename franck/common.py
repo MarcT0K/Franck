@@ -49,13 +49,31 @@ async def fetch_fediverse_instance_list(software):
 
 
 class Crawler:
-    SOFTWARE = None
-    CRAWL_SUBJECT = None
+    SOFTWARE: Optional[str] = None
+    CRAWL_SUBJECT: Optional[str] = None
+
+    INTERACTIONS_CSV = ["interactions.csv"]
+    # NB: some crawlers can produce multiple graphs
+    #   but all graphs have the same format.
+    INTERACTIONS_CSV_FIELDS = ["Source", "Target", "Weight"]  # DO NOT OVERWRITE
+
+    INSTANCES_CSV = "instances.csv"
+    INSTANCES_CSV_FIELDS: List[str] = [
+        "host",
+        "error",
+        "Id",
+        "Label",
+    ]  # CAN BE EXTENDED
+
+    TEMP_FILES = []
 
     def __init__(
         self,
         urls: List[str],
     ):
+        assert self.SOFTWARE is not None
+        assert self.CRAWL_SUBJECT is not None
+
         # Create the result folder
         self.result_dir = (
             self.SOFTWARE
@@ -84,9 +102,7 @@ class Crawler:
 
         self.crawled_instances = urls
 
-        self._setup_logger()
-
-    def _setup_logger(self):
+        # Setup the logger
         self.logger = colorlog.getLogger(self.SOFTWARE + "_" + self.CRAWL_SUBJECT)
         self.logger.setLevel(logging.DEBUG)
         self.logger.handlers = []  # Reset handlers
@@ -140,11 +156,55 @@ class Crawler:
         """
         raise NotImplementedError
 
-    def post_round(self):
-        """Various post-round operations."""
+    def data_postprocessing(self):
+        pass
 
-    @abstractmethod
-    def data_cleaning(self): ...
+    def data_cleaning(self):  # TODO: TEST/DEBUG
+        assert self.SOFTWARE is not None
+        assert self.CRAWL_SUBJECT is not None
+
+        # Remove temporary files
+        log_file = "crawl_" + self.SOFTWARE + "_" + self.CRAWL_SUBJECT + ".log"
+        os.rename(log_file, log_file + ".to_remove")
+
+        for file in self.TEMP_FILES:
+            os.rename(file, file + ".to_remove")
+
+        # Remove the unreachable instances
+        working_instances = set()
+        with open(self.INSTANCES_CSV, encoding="utf-8") as rawfile, open(
+            "clean_" + self.INSTANCES_CSV, "w", encoding="utf-8"
+        ) as cleanfile:
+            data = DictReader(rawfile)
+            assert self.INSTANCES_CSV_FIELDS is not None
+            writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
+            writer.writeheader()
+            for row in data:
+                if row["error"] == "":
+                    working_instances.add(row["host"])
+                    row["Id"] = row["host"]
+                    row["Label"] = row["host"]
+                    writer.writerow(row)
+
+        os.rename(self.INSTANCES_CSV, self.INSTANCES_CSV + ".to_remove")
+        os.rename("clean_" + self.INSTANCES_CSV, self.INSTANCES_CSV)
+
+        for interaction_file in self.INSTANCES_CSV:
+            with open(interaction_file, encoding="utf-8") as rawfile, open(
+                "clean_" + interaction_file, "w", encoding="utf-8"
+            ) as cleanfile:
+                data = DictReader(rawfile)
+                writer = DictWriter(cleanfile, fieldnames=self.INTERACTIONS_CSV_FIELDS)
+                writer.writeheader()
+                for row in data:
+                    if (
+                        row["Source"] in working_instances
+                        and row["Target"] in working_instances
+                    ):
+                        writer.writerow(row)
+
+            os.rename(interaction_file, interaction_file + ".to_remove")
+            os.rename("clean_" + interaction_file, interaction_file)
 
     async def __inspect_instance_with_logging(self, url):
         self.logger.debug("Start inspecting instance %s", url)
@@ -169,8 +229,11 @@ class Crawler:
             await task
 
         self.logger.info("Crawl completed!!!")
-        self.logger.info("Cleaning the data...")
+        self.logger.info("Processing the data...")
+
+        self.data_postprocessing()
         self.data_cleaning()
+
         Crawler.compress_csv_files()
         self.logger.info("Done.")
 
@@ -254,17 +317,13 @@ class FederationCrawler(Crawler):
     """
 
     CRAWL_SUBJECT = "federation"
-    INSTANCES_FILENAME = "instances.csv"
-    FOLLOWERS_FILENAME = "followers.csv"
-    FOLLOWERS_CSV_FIELDS = ["Source", "Target", "Weight"]
-    INSTANCES_CSV_FIELDS: List[str] = ["host", "error", "Id", "Label"]
 
     def __init__(self, urls: List[str]):
         super().__init__(urls)
 
         self.csv_information = [
-            (self.INSTANCES_FILENAME, self.INSTANCES_CSV_FIELDS),
-            (self.FOLLOWERS_FILENAME, self.FOLLOWERS_CSV_FIELDS),
+            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
+            (self.INTERACTIONS_CSV, self.FOLLOWERS_CSV_FIELDS),
         ]
 
     @abstractmethod
@@ -272,8 +331,8 @@ class FederationCrawler(Crawler):
         raise NotImplementedError
 
     async def _write_instance_csv(self, instance_dict):
-        async with self.csv_locks[self.INSTANCES_FILENAME]:
-            with open(self.INSTANCES_FILENAME, "a", encoding="utf-8") as csv_file:
+        async with self.csv_locks[self.INSTANCES_CSV]:
+            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
                 writer.writerow(instance_dict)
 
@@ -283,8 +342,8 @@ class FederationCrawler(Crawler):
         connected_instances: List[str],
         blocked_instances: Optional[List[str]] = None,
     ):
-        async with self.csv_locks[self.FOLLOWERS_FILENAME]:
-            with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
+        async with self.csv_locks[self.INTERACTIONS_CSV]:
+            with open(self.INTERACTIONS_CSV, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
                 for dest in set(connected_instances):
                     if (
@@ -300,33 +359,3 @@ class FederationCrawler(Crawler):
                             writer.writerow(
                                 {"Source": host, "Target": dest, "Weight": -1}
                             )
-
-    def data_cleaning(self):
-        """Clean the final result file."""
-        working_instances = set()
-        with open(self.INSTANCES_FILENAME, encoding="utf-8") as rawfile, open(
-            "clean_" + self.INSTANCES_FILENAME, "w", encoding="utf-8"
-        ) as cleanfile:
-            data = DictReader(rawfile)
-            assert self.INSTANCES_CSV_FIELDS is not None
-            writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
-            writer.writeheader()
-            for row in data:
-                if row["error"] == "":
-                    working_instances.add(row["host"])
-                    row["Id"] = row["host"]
-                    row["Label"] = row["host"]
-                    writer.writerow(row)
-
-        with open(self.FOLLOWERS_FILENAME, encoding="utf-8") as rawfile, open(
-            "clean_" + self.FOLLOWERS_FILENAME, "w", encoding="utf-8"
-        ) as cleanfile:
-            data = DictReader(rawfile)
-            writer = DictWriter(cleanfile, fieldnames=self.FOLLOWERS_CSV_FIELDS)
-            writer.writeheader()
-            for row in data:
-                if (
-                    row["Source"] in working_instances
-                    and row["Target"] in working_instances
-                ):
-                    writer.writerow(row)
