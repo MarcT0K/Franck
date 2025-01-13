@@ -134,3 +134,4 @@ dmypy.json
 *.gexf
 *.gephi
 .vscode/
+*.to_remove

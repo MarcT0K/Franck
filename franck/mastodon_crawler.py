@@ -73,7 +73,6 @@ class MastodonActiveUserCrawler(Crawler):
         "registration_enabled",
         "error",
     ]
-    FOLLOWS_FIELDS = ["Source", "Target", "Weight"]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
     CRAWLED_FOLLOWS_FIELDS = [
@@ -104,7 +103,7 @@ class MastodonActiveUserCrawler(Crawler):
 
         self.csv_information = [
             (self.INSTANCES_CSV, self.INSTANCES_FIELDS),
-            (self.FOLLOWS_CSV, self.FOLLOWS_FIELDS),
+            (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
             (self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS),
             (self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS),
         ]
@@ -261,7 +260,7 @@ class MastodonActiveUserCrawler(Crawler):
         max_id = None
         while True:
             params = {"max_id": max_id} if max_id is not None else None
-            resp, max_id = await self._fetch_json_with_pagination(
+            resp, new_max_id = await self._fetch_json_with_pagination(
                 f"https://{host}/api/v1/accounts/{user_info['id']}/following",
                 params=params,
             )
@@ -275,12 +274,15 @@ class MastodonActiveUserCrawler(Crawler):
                     else host
                 )
 
-                follow_dicts[followee_dict["username"]] = {
-                    "followee": followee_dict["username"],
-                    "followee_instance": followee_instance,
-                    "follower": user_info["username"],
-                    "follower_instance": host,
-                }
+                if (
+                    followee_instance in self.crawled_instances
+                ):  # Avoid adding useless follows that will be cleaned later
+                    follow_dicts[followee_dict["username"]] = {
+                        "followee": followee_dict["username"],
+                        "followee_instance": followee_instance,
+                        "follower": user_info["username"],
+                        "follower_instance": host,
+                    }
 
             # if len(follow_dicts) > user_info["following_count"]: # Had problems when the users were following/unfollowing during the crawl
             #     raise ValueError(
@@ -291,8 +293,13 @@ class MastodonActiveUserCrawler(Crawler):
             #         list(follow_dicts.keys()),
             #     )
 
-            if max_id is None:
-                if len(follow_dicts) == 0 and user_info["following_count"] != 0:
+            if new_max_id is None:
+                if (
+                    len(resp) == 9
+                    and max_id is None
+                    and user_info["following_count"] != 0
+                ):
+                    # NB: we need these "complicated" conditions instead of just checking the size of follow_dicts because we filter some follows
                     self.logger.debug(
                         "User %s@%s set its follower list as private.",
                         user_info["username"],
@@ -300,6 +307,7 @@ class MastodonActiveUserCrawler(Crawler):
                     )
                 break
 
+            max_id = new_max_id
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
         async with self.csv_locks[self.CRAWLED_FOLLOWS_CSV]:
@@ -320,8 +328,8 @@ class MastodonActiveUserCrawler(Crawler):
                 prev_follower[followee] = prev_follower.get(followee, 0) + 1
                 follows_dict[follower] = prev_follower
 
-        with open(self.FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=self.FOLLOWS_FIELDS)
+        with open(self.INTERACTIONS_CSV_FIELDS[0], "a", encoding="utf-8") as csv_file:
+            writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
             for follower, followees_dict in follows_dict.items():
                 for followee, follows_count in followees_dict.items():
                     writer.writerow(
@@ -335,7 +343,7 @@ class MastodonActiveUserCrawler(Crawler):
 
 async def launch_mastodon_crawl():
     start_urls = await fetch_fediverse_instance_list("mastodon")
-    start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
+    # start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
 
     async with MastodonFederationCrawler(start_urls) as crawler:
         await crawler.launch()

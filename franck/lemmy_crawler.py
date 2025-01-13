@@ -131,7 +131,7 @@ class LemmyCommunityCrawler(Crawler):
 
     CROSS_INSTANCE_INTERACTIONS_CSV = "cross_instance_interactions.csv"
     INTRA_INSTANCE_INTERACTIONS_CSV = "intra_instance_interactions.csv"
-    INTERACTIONS_CSV = [
+    INTERACTIONS_CSVS = [
         CROSS_INSTANCE_INTERACTIONS_CSV,
         INTRA_INSTANCE_INTERACTIONS_CSV,
     ]
@@ -286,7 +286,8 @@ class LemmyCommunityCrawler(Crawler):
                 current["username"] = post["creator"]["name"]
                 current["post_id"] = post["post"]["ap_id"]
 
-                new_posts.append(current)
+                if current["user_instance"] in self.crawled_instances:
+                    new_posts.append(current)
 
             async with self.csv_locks[self.DETAILED_INTERACTIONS_CSV]:
                 with open(

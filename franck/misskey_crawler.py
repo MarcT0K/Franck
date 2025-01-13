@@ -84,7 +84,6 @@ class MisskeyTopUserCrawler(Crawler):
     CRAWL_SUBJECT = "top_user"
 
     INSTANCES_FIELDS = ["instance", "users_count", "posts_count", "error"]
-    FOLLOWS_FIELDS = ["Source", "Target", "Weight"]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
     CRAWLED_FOLLOWS_FIELDS = [
@@ -115,7 +114,7 @@ class MisskeyTopUserCrawler(Crawler):
 
         self.csv_information = [
             (self.INSTANCES_CSV, self.INSTANCES_FIELDS),
-            (self.FOLLOWS_CSV, self.FOLLOWS_FIELDS),
+            (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
             (self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS),
             (self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS),
         ]
@@ -223,17 +222,17 @@ class MisskeyTopUserCrawler(Crawler):
 
             host_check = lambda host_input: host if host_input is None else host_input
 
-            new_follows = [
-                {
-                    "follower": follow_dict["follower"]["username"],
-                    "follower_instance": host_check(follow_dict["follower"]["host"]),
-                    "followee": user_info["username"],
-                    "followee_instance": host_check(user_info["host"]),
-                }
-                for follow_dict in resp
-            ]
-
-            follow_dicts.extend(new_follows)
+            for follow_dict in resp:
+                follower_instance = host_check(follow_dict["follower"]["host"])
+                if follower_instance in self.crawled_instances:
+                    follow_dicts.append(
+                        {
+                            "follower": follow_dict["follower"]["username"],
+                            "follower_instance": follower_instance,
+                            "followee": user_info["username"],
+                            "followee_instance": host_check(user_info["host"]),
+                        }
+                    )
 
             if len(resp) < self.MAX_PAGE_SIZE:
                 break
@@ -260,8 +259,8 @@ class MisskeyTopUserCrawler(Crawler):
                 prev_follower[followee] = prev_follower.get(followee, 0) + 1
                 follows_dict[follower] = prev_follower
 
-        with open(self.FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=self.FOLLOWS_FIELDS)
+        with open(self.INTERACTIONS_CSVS[0], "a", encoding="utf-8") as csv_file:
+            writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
             for follower, followees_dict in follows_dict.items():
                 for followee, follows_count in followees_dict.items():
                     writer.writerow(

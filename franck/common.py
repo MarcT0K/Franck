@@ -52,7 +52,7 @@ class Crawler:
     SOFTWARE: Optional[str] = None
     CRAWL_SUBJECT: Optional[str] = None
 
-    INTERACTIONS_CSV = ["interactions.csv"]
+    INTERACTIONS_CSVS = ["interactions.csv"]
     # NB: some crawlers can produce multiple graphs
     #   but all graphs have the same format.
     INTERACTIONS_CSV_FIELDS = ["Source", "Target", "Weight"]  # DO NOT OVERWRITE
@@ -100,7 +100,7 @@ class Crawler:
             client_session=aiohttp_session, retry_options=retry_options
         )
 
-        self.crawled_instances = urls
+        self.crawled_instances = set(urls)
 
         # Setup the logger
         self.logger = colorlog.getLogger(self.SOFTWARE + "_" + self.CRAWL_SUBJECT)
@@ -186,10 +186,10 @@ class Crawler:
                     row["Label"] = row["host"]
                     writer.writerow(row)
 
-        os.rename(self.INSTANCES_CSV, self.INSTANCES_CSV + ".to_remove")
+        os.rename(self.INSTANCES_CSV, self.INSTANCES_CSV + ".old.to_remove")
         os.rename("clean_" + self.INSTANCES_CSV, self.INSTANCES_CSV)
 
-        for interaction_file in self.INSTANCES_CSV:
+        for interaction_file in self.INTERACTIONS_CSVS:
             with open(interaction_file, encoding="utf-8") as rawfile, open(
                 "clean_" + interaction_file, "w", encoding="utf-8"
             ) as cleanfile:
@@ -203,7 +203,7 @@ class Crawler:
                     ):
                         writer.writerow(row)
 
-            os.rename(interaction_file, interaction_file + ".to_remove")
+            os.rename(interaction_file, interaction_file + ".old.to_remove")
             os.rename("clean_" + interaction_file, interaction_file)
 
     async def __inspect_instance_with_logging(self, url):
@@ -320,10 +320,10 @@ class FederationCrawler(Crawler):
 
     def __init__(self, urls: List[str]):
         super().__init__(urls)
-
+        assert len(self.INTERACTIONS_CSVS) == 1
         self.csv_information = [
             (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
-            (self.INTERACTIONS_CSV, self.FOLLOWERS_CSV_FIELDS),
+            (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
         ]
 
     @abstractmethod
@@ -342,9 +342,10 @@ class FederationCrawler(Crawler):
         connected_instances: List[str],
         blocked_instances: Optional[List[str]] = None,
     ):
-        async with self.csv_locks[self.INTERACTIONS_CSV]:
-            with open(self.INTERACTIONS_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
+        assert len(self.INTERACTIONS_CSVS) == 1
+        async with self.csv_locks[self.INTERACTIONS_CSVS[0]]:
+            with open(self.INTERACTIONS_CSVS[0], "a", encoding="utf-8") as csv_file:
+                writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
                 for dest in set(connected_instances):
                     if (
                         dest in self.crawled_instances
