@@ -1,9 +1,5 @@
 """Pleroma/Akkoma Graph Crawler"""
 
-import asyncio
-
-from csv import DictWriter
-
 from .common import fetch_fediverse_instance_list
 from .mastodon_crawler import MastodonActiveUserCrawler, MastodonFederationCrawler
 
@@ -25,7 +21,7 @@ class PleromaActiveUserCrawler(MastodonActiveUserCrawler):
 async def launch_pleroma_crawl():
     start_urls = await fetch_fediverse_instance_list("pleroma")
     start_urls += await fetch_fediverse_instance_list("akkoma")
-    start_urls = ["poa.st", "spinster.xyz", "fe.disroot.org"]  # FOR DEBUG
+    # start_urls = ["poa.st", "spinster.xyz", "fe.disroot.org"]  # FOR DEBUG
 
     async with PleromaFederationCrawler(start_urls) as crawler:
         await crawler.launch()

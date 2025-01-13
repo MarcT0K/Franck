@@ -115,6 +115,24 @@ class LemmyCommunityCrawler(Crawler):
     SOFTWARE = "lemmy"
     CRAWL_SUBJECT = "community"
 
+    INSTANCES_CSV_FIELDS = [
+        "host",
+        "version",
+        "users",
+        "posts",
+        "comments",
+        "communities",
+        "users_active_day",
+        "users_active_week",
+        "users_active_month",
+        "users_active_half_year",
+        "captcha_enabled",
+        "require_email_verification",
+        "error",
+        "Id",
+        "Label",
+    ]
+
     COMMUNITY_ACTIVITY_CSV = "community_activity.csv"
     COMMUNITY_ACTIVITY_FIELDS = ["instance", "community", "number_posts"]
     COMMUNITY_OWNERSHIP_CSV = "community_ownership.csv"
@@ -146,6 +164,7 @@ class LemmyCommunityCrawler(Crawler):
     ]
 
     TEMP_FILES = [DETAILED_INTERACTIONS_CSV]
+    MAX_PAGE_SIZE = 50
 
     def __init__(
         self, urls, activity_scope="TopMonth", min_active_user_per_community=5
@@ -157,6 +176,7 @@ class LemmyCommunityCrawler(Crawler):
         self.min_active_user_per_community = min_active_user_per_community
 
         self.csv_information = [
+            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
             (self.DETAILED_INTERACTIONS_CSV, self.DETAILED_INTERACTIONS_FIELDS),
             (self.INTRA_INSTANCE_INTERACTIONS_CSV, self.INTERACTIONS_CSV_FIELDS),
             (self.CROSS_INSTANCE_INTERACTIONS_CSV, self.INTERACTIONS_CSV_FIELDS),
@@ -165,6 +185,8 @@ class LemmyCommunityCrawler(Crawler):
         ]
 
     async def inspect_instance(self, host):
+        await self._inspect_instance_info(host)
+
         communities = []
         try:
             communities = await self.crawl_community_list(host)
@@ -186,6 +208,49 @@ class LemmyCommunityCrawler(Crawler):
                 )
                 return
 
+    async def _inspect_instance_info(self, host: str):
+        instance_dict = {"host": host}
+
+        try:
+            info_dict = await self._fetch_json("http://" + host + "/api/v3/site")
+            instance_dict.update(
+                {
+                    key: val
+                    for key, val in info_dict["site_view"]["counts"].items()
+                    if key in self.INSTANCES_CSV_FIELDS
+                }
+            )
+
+            instance_dict["version"] = info_dict["version"]
+
+            if "local_site" not in info_dict["site_view"]:  # For older API versions
+                instance_dict.update(
+                    {
+                        key: val
+                        for key, val in info_dict["site_view"]["site"].items()
+                        if key in self.INSTANCES_CSV_FIELDS
+                    }
+                )
+            else:
+                instance_dict.update(
+                    {
+                        key: val
+                        for key, val in info_dict["site_view"]["local_site"].items()
+                        if key in self.INSTANCES_CSV_FIELDS
+                    }
+                )
+
+            if (
+                info_dict["site_view"].get("local_site")
+                and not info_dict["site_view"]["local_site"]["federation_enabled"]
+            ):
+                # NB: By default the older API have the federation actived by default
+                raise CrawlerException("Federation disabled")
+        except CrawlerException as err:
+            instance_dict["error"] = str(err)
+
+        await self._write_instance_csv(instance_dict)
+
     async def crawl_community_list(self, host):
         local_communities = []
 
@@ -194,7 +259,7 @@ class LemmyCommunityCrawler(Crawler):
         while not crawl_over:
             params = {
                 "page": page,
-                "limit": 50,
+                "limit": self.MAX_PAGE_SIZE,
                 "type_": "Local",
                 "sort": self.activity_scope,
             }
@@ -248,7 +313,7 @@ class LemmyCommunityCrawler(Crawler):
                     for community_dict in new_communities:
                         writer.writerow(community_dict)
 
-            if len(resp["communities"]) < 50:
+            if len(resp["communities"]) < self.MAX_PAGE_SIZE:
                 break
 
             page += 1
@@ -389,7 +454,7 @@ class LemmyCommunityCrawler(Crawler):
             (self.INTRA_INSTANCE_INTERACTIONS_CSV, intra_instance_mat),
         ]:
             with open(csv_name, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.CSV_FIELDS)
+                writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
                 for src_inst_ind, dest_inst_ind, weight in zip(
                     sp_mat.row, sp_mat.col, sp_mat.data
                 ):

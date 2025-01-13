@@ -71,6 +71,19 @@ class Crawler:
         self,
         urls: List[str],
     ):
+        assert self.INTERACTIONS_CSV_FIELDS == [
+            "Source",
+            "Target",
+            "Weight",
+        ]  # Avoid regression in the child classes
+        for field in [
+            "host",
+            "error",
+            "Id",
+            "Label",
+        ]:
+            assert field in self.INSTANCES_CSV_FIELDS
+
         assert self.SOFTWARE is not None
         assert self.CRAWL_SUBJECT is not None
 
@@ -301,35 +314,6 @@ class Crawler:
                     raise CrawlerException("Invalid redirect") from err
                 raise
 
-    @staticmethod
-    def compress_csv_files():
-        for fname in glob.glob("*.csv"):
-            dataframe = pd.read_csv(fname)
-            dataframe.to_parquet(fname[:-4] + ".parquet")
-
-
-class FederationCrawler(Crawler):
-    """Abstract class for crawler exploring a federation of instances.
-
-    This crawler works for Fediverse projects where instances are explicitly
-    interconnected (e.g., Lemmy or Peertube). Hence, this graph depends on
-    instance configuration and not on the user activity.
-    """
-
-    CRAWL_SUBJECT = "federation"
-
-    def __init__(self, urls: List[str]):
-        super().__init__(urls)
-        assert len(self.INTERACTIONS_CSVS) == 1
-        self.csv_information = [
-            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
-            (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
-        ]
-
-    @abstractmethod
-    async def inspect_instance(self, host: str):
-        raise NotImplementedError
-
     async def _write_instance_csv(self, instance_dict):
         async with self.csv_locks[self.INSTANCES_CSV]:
             with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
@@ -360,3 +344,32 @@ class FederationCrawler(Crawler):
                             writer.writerow(
                                 {"Source": host, "Target": dest, "Weight": -1}
                             )
+
+    @staticmethod
+    def compress_csv_files():
+        for fname in glob.glob("*.csv"):
+            dataframe = pd.read_csv(fname)
+            dataframe.to_parquet(fname[:-4] + ".parquet")
+
+
+class FederationCrawler(Crawler):
+    """Abstract class for crawler exploring a federation of instances.
+
+    This crawler works for Fediverse projects where instances are explicitly
+    interconnected (e.g., Lemmy or Peertube). Hence, this graph depends on
+    instance configuration and not on the user activity.
+    """
+
+    CRAWL_SUBJECT = "federation"
+
+    def __init__(self, urls: List[str]):
+        super().__init__(urls)
+        assert len(self.INTERACTIONS_CSVS) == 1
+        self.csv_information = [
+            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
+            (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
+        ]
+
+    @abstractmethod
+    async def inspect_instance(self, host: str):
+        raise NotImplementedError

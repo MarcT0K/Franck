@@ -83,7 +83,14 @@ class MisskeyTopUserCrawler(Crawler):
     SOFTWARE = "misskey"
     CRAWL_SUBJECT = "top_user"
 
-    INSTANCES_FIELDS = ["instance", "users_count", "posts_count", "error"]
+    INSTANCES_CSV_FIELDS = [
+        "instance",
+        "users_count",
+        "posts_count",
+        "error",
+        "Id",
+        "Label",
+    ]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
     CRAWLED_FOLLOWS_FIELDS = [
@@ -113,7 +120,7 @@ class MisskeyTopUserCrawler(Crawler):
         self.nb_top_users = nb_top_users
 
         self.csv_information = [
-            (self.INSTANCES_CSV, self.INSTANCES_FIELDS),
+            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
             (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
             (self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS),
             (self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS),
@@ -157,9 +164,7 @@ class MisskeyTopUserCrawler(Crawler):
             instance_dict["error"] = str(err)
 
         async with self.csv_locks[self.INSTANCES_CSV]:
-            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
-                writer.writerow(instance_dict)
+            await self._write_instance_csv(instance_dict)
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
@@ -274,7 +279,7 @@ class MisskeyTopUserCrawler(Crawler):
 
 async def launch_misskey_crawl():
     start_urls = await fetch_fediverse_instance_list("misskey")
-    start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
+    # start_urls = ["pari.cafe", "mi.yumechi.jp", "misskey.io"]  # For debug purpose
 
     async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()

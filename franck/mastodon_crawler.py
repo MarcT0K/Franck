@@ -64,7 +64,7 @@ class MastodonActiveUserCrawler(Crawler):
     SOFTWARE = "mastodon"
     CRAWL_SUBJECT = "active_user"
 
-    INSTANCES_FIELDS = [
+    INSTANCES_CSV_FIELDS = [
         "host",
         "version",
         "users",
@@ -72,6 +72,8 @@ class MastodonActiveUserCrawler(Crawler):
         "languages",
         "registration_enabled",
         "error",
+        "Id",
+        "Label",
     ]
 
     CRAWLED_FOLLOWS_CSV = "detailed_follows.csv"
@@ -102,7 +104,7 @@ class MastodonActiveUserCrawler(Crawler):
         self.nb_active_users = nb_active_users
 
         self.csv_information = [
-            (self.INSTANCES_CSV, self.INSTANCES_FIELDS),
+            (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
             (self.INTERACTIONS_CSVS[0], self.INTERACTIONS_CSV_FIELDS),
             (self.CRAWLED_FOLLOWS_CSV, self.CRAWLED_FOLLOWS_FIELDS),
             (self.CRAWLED_USERS_CSV, self.CRAWLED_USERS_FIELDS),
@@ -201,16 +203,8 @@ class MastodonActiveUserCrawler(Crawler):
             instance_dict["registration_enabled"] = info_dict["registrations"]
         except Exception as err:
             instance_dict["error"] = str(err)
-            async with self.csv_locks[self.INSTANCES_CSV]:
-                with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                    writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
-                    writer.writerow(instance_dict)
-            raise err
 
-        async with self.csv_locks[self.INSTANCES_CSV]:
-            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_FIELDS)
-                writer.writerow(instance_dict)
+        await self._write_instance_csv(instance_dict)
 
     async def _crawl_user_list(self, host):
         users = []
@@ -328,7 +322,7 @@ class MastodonActiveUserCrawler(Crawler):
                 prev_follower[followee] = prev_follower.get(followee, 0) + 1
                 follows_dict[follower] = prev_follower
 
-        with open(self.INTERACTIONS_CSV_FIELDS[0], "a", encoding="utf-8") as csv_file:
+        with open(self.INTERACTIONS_CSVS[0], "a", encoding="utf-8") as csv_file:
             writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
             for follower, followees_dict in follows_dict.items():
                 for followee, follows_count in followees_dict.items():
