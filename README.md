@@ -2,9 +2,9 @@
 
 This repository contains a Python script to crawl various social media from the Fediverse. Our tool represent the dynamics existing between the Fediverse servers. These dynamics are represented using different graphs.
 
-Currently, `franck` is able to crawl Bookwyrm, Mastodon, Friendica, Misskey, Peertube, and Lemmy.
+Currently, `franck` is able to crawl Bookwyrm, Mastodon, Friendica, Misskey, Peertube, Pleroma/Akkoma, and Lemmy.
 Our tool **only queries public APIs.**
-Moreover, our implementation includes some load balancing (e.g., maximum 5 queries per second and per Fediverse instance).
+Moreover, our implementation includes some **load balancing** (e.g., maximum 5 queries per second and per Fediverse instance).
 Our goal is to crawl the Fediverse while respecting its philosophy and minimizing our impact.
 
 As detailed in [DOCS.md](DOCS.md), our crawling approach is targeted to minimize the number of queries necessary.

@@ -21,7 +21,7 @@ Thus, building a complete graph of the Fediverse is an interesting future work, 
 
 ### "Federation" graphs
 
-The "Federation" graphs is provided for Bookwyrm, Friendica, Lemmy, Mastodon, Misskey, and Peertube.
+The "Federation" graphs is provided for Bookwyrm, Friendica, Lemmy, Mastodon, Misskey, Pleroma/Akkoma, and Peertube.
 
 Most Fediverse software provide an API endpoint such as `api/instance/peers` listing all the ActivityPub servers to which an instance is connected.
 The federation graph represent these connections.
@@ -54,7 +54,7 @@ Such graphs accurately represent the interaction in the evolutions compared to o
 
 Thus, Lemmy community graphs are valuable to obtain graphs with a realistic temporal evolution.
 
-### Mastodon "Active Users" graphs
+### Mastodon/Pleroma/Akkoma "Active Users" graphs
 
 
 The Misskey "Top Users" crawler extracts the 10K most recently active users from each instance and analyse their following lists.
@@ -63,6 +63,8 @@ The graph is directed and the weight of each weight is equal to the total number
 
 We rely on the recently active users to avoid querying all the Mastodon users.
 This technique significantly reduces the network traffic while providing a coherent estimation of the interactions.
+
+We provide the exact same graph for Pleroma/Akkoma.
 
 ### Misskey "Top Users" graphs
 
