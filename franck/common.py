@@ -82,7 +82,7 @@ class Crawler:
             client_session=aiohttp_session, retry_options=retry_options
         )
 
-        self.urls = urls
+        self.crawled_instances = urls
 
         self._setup_logger()
 
@@ -285,11 +285,19 @@ class FederationCrawler(Crawler):
             with open(self.FOLLOWERS_FILENAME, "a", encoding="utf-8") as csv_file:
                 writer = DictWriter(csv_file, fieldnames=self.FOLLOWERS_CSV_FIELDS)
                 for dest in set(connected_instances):
-                    writer.writerow({"Source": host, "Target": dest, "Weight": 1})
+                    if (
+                        dest in self.crawled_instances
+                    ):  # Minimizes the cleaning necessary
+                        writer.writerow({"Source": host, "Target": dest, "Weight": 1})
 
                 if blocked_instances is not None:
                     for dest in set(blocked_instances):
-                        writer.writerow({"Source": host, "Target": dest, "Weight": -1})
+                        if (
+                            dest in self.crawled_instances
+                        ):  # Minimizes the cleaning necessary
+                            writer.writerow(
+                                {"Source": host, "Target": dest, "Weight": -1}
+                            )
 
     def data_cleaning(self):
         """Clean the final result file."""

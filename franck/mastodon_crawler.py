@@ -24,7 +24,8 @@ class MastodonFederationCrawler(FederationCrawler):
     INSTANCES_CSV_FIELDS = [
         "host",
         "version",
-        "active_users",
+        "users",
+        "statuses",
         "languages",
         "registration_enabled",
         "error",
@@ -39,13 +40,12 @@ class MastodonFederationCrawler(FederationCrawler):
         # blocked_instances = []
 
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v2/instance")
+            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
-            instance_dict["active_users"] = info_dict["usage"]["users"]["active_month"]
+            instance_dict["users"] = info_dict["stats"]["user_count"]
+            instance_dict["statuses"] = info_dict["stats"]["status_count"]
             instance_dict["languages"] = "/".join(info_dict["languages"])
-            instance_dict["registration_enabled"] = info_dict["registrations"][
-                "enabled"
-            ]
+            instance_dict["registration_enabled"] = info_dict["registrations"]
 
             connected_instances = await self._fetch_json(
                 "http://" + host + "/api/v1/instance/peers"
@@ -68,7 +68,8 @@ class MastodonActiveUserCrawler(Crawler):
     INSTANCES_FIELDS = [
         "host",
         "version",
-        "active_users",
+        "users",
+        "statuses",
         "languages",
         "registration_enabled",
         "error",
@@ -192,13 +193,12 @@ class MastodonActiveUserCrawler(Crawler):
     async def _fetch_instance_info(self, host):
         instance_dict = {}
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v2/instance")
+            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
-            instance_dict["active_users"] = info_dict["usage"]["users"]["active_month"]
+            instance_dict["users"] = info_dict["stats"]["user_count"]
+            instance_dict["statuses"] = info_dict["stats"]["status_count"]
             instance_dict["languages"] = "/".join(info_dict["languages"])
-            instance_dict["registration_enabled"] = info_dict["registrations"][
-                "enabled"
-            ]
+            instance_dict["registration_enabled"] = info_dict["registrations"]
         except Exception as err:
             instance_dict["error"] = str(err)
             async with self.csv_locks[self.INSTANCES_CSV]:
@@ -267,13 +267,16 @@ class MastodonActiveUserCrawler(Crawler):
             for followee_dict in resp:
                 # NB: Sometimes, the API was returning some duplicates (idk why...)
                 #   Using a dictionary instead of a list avoid these duplicates
-                follow_dicts[followee_dict["username"]] = {
-                    "followee": followee_dict["username"],
-                    "followee_instance": (
-                        followee_dict["acct"].split("@")[1]
+                followee_instance = followee_dict["acct"].split("@")[1]
                         if "@" in followee_dict["acct"]
                         else host
-                    ),
+                
+                if followee_dict not in self.crawled_instances:
+                    continue
+
+                follow_dicts[followee_dict["username"]] = {
+                    "followee": followee_dict["username"],
+                    "followee_instance": followee_instance
                     "follower": user_info["username"],
                     "follower_instance": host,
                 }
@@ -331,7 +334,7 @@ class MastodonActiveUserCrawler(Crawler):
 
 async def launch_mastodon_crawl():
     start_urls = await fetch_fediverse_instance_list("mastodon")
-    # start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
+    start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
 
     async with MastodonFederationCrawler(start_urls) as crawler:
         await crawler.launch()
