@@ -13,11 +13,11 @@ from .pleroma_crawler import launch_pleroma_crawl
 SOFTWARE_LAUNCH = {
     "peertube": launch_peertube_crawl,
     "lemmy": launch_lemmy_crawl,
-    "misskey": launch_misskey_crawl,
-    "mastodon": launch_mastodon_crawl,
     "friendica": launch_friendica_crawl,
     "bookwyrm": launch_bookwyrm_crawl,
     "pleroma": launch_pleroma_crawl,
+    "misskey": launch_misskey_crawl,
+    "mastodon": launch_mastodon_crawl,
 }
 
 
