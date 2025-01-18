@@ -405,14 +405,16 @@ class LemmyCommunityCrawler(Crawler):
                 community = post_dict["community"]
                 try:
                     user_instance_ind = instance_dict[instance]
-                    community_ind = community_dict[community][0]
-                    interaction_mat[user_instance_ind, community_ind] += 1
                 except KeyError:
                     self.logger.debug(
-                        "Ignoring post %s: instance unknown %s",
+                        "Ignoring post %s: instance unknown %s (community %s)",
                         post_dict["post_id"],
                         instance,
+                        community,
                     )
+                else:
+                    community_ind = community_dict[community][0]
+                    interaction_mat[user_instance_ind, community_ind] += 1
 
         intra_instance_mat = sp.coo_matrix(interaction_mat @ ownership_mat)
         bool_interaction_mat = (interaction_mat != 0).astype(int)
@@ -425,36 +427,34 @@ class LemmyCommunityCrawler(Crawler):
         assert community_act_mat.shape == (1, len(community_list))
 
         # Write the community activity CSV
-        with open(self.COMMUNITY_ACTIVITY_CSV, "a", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=self.COMMUNITY_ACTIVITY_FIELDS)
-            for community_ind, nb_posts in enumerate(community_act_mat.tolist()[0]):
-                community = community_list[community_ind]
-                instance_ind = community_dict[community][1]
-                writer.writerow(
-                    {
-                        "instance": instance_list[instance_ind],
-                        "community": community,
-                        "number_posts": nb_posts,
-                    }
-                )
+        _lock, _file, writer = self.csvs[self.COMMUNITY_ACTIVITY_CSV]
+        for community_ind, nb_posts in enumerate(community_act_mat.tolist()[0]):
+            community = community_list[community_ind]
+            instance_ind = community_dict[community][1]
+            writer.writerow(
+                {
+                    "instance": instance_list[instance_ind],
+                    "community": community,
+                    "number_posts": nb_posts,
+                }
+            )
 
         # Write the two CSV storing possible weighted graphs between the active instances
         for csv_name, sp_mat in [
             (self.CROSS_INSTANCE_INTERACTIONS_CSV, cross_instance_mat),
             (self.INTRA_INSTANCE_INTERACTIONS_CSV, intra_instance_mat),
         ]:
-            with open(csv_name, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
-                for src_inst_ind, dest_inst_ind, weight in zip(
-                    sp_mat.row, sp_mat.col, sp_mat.data
-                ):
-                    writer.writerow(
-                        {
-                            "Source": instance_list[src_inst_ind],
-                            "Target": instance_list[dest_inst_ind],
-                            "Weight": weight,
-                        }
-                    )
+            _lock, _file, writer = self.csvs[csv_name]
+            for src_inst_ind, dest_inst_ind, weight in zip(
+                sp_mat.row, sp_mat.col, sp_mat.data
+            ):
+                writer.writerow(
+                    {
+                        "Source": instance_list[src_inst_ind],
+                        "Target": instance_list[dest_inst_ind],
+                        "Weight": weight,
+                    }
+                )
 
 
 async def launch_lemmy_crawl():
