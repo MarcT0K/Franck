@@ -186,8 +186,9 @@ class Crawler:
 
         # Remove the unreachable instances
         working_instances = set()
-        with open("clean_" + self.INSTANCES_CSV, "w", encoding="utf-8") as cleanfile:
-            _lock, rawfile, _writer = self.csvs[self.INSTANCES_CSV]
+        with open(self.INSTANCES_CSV, encoding="utf-8") as rawfile, open(
+            "clean_" + self.INSTANCES_CSV, "w", encoding="utf-8"
+        ) as cleanfile:
             data = DictReader(rawfile)
             assert self.INSTANCES_CSV_FIELDS is not None
             writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
@@ -203,8 +204,9 @@ class Crawler:
         os.rename("clean_" + self.INSTANCES_CSV, self.INSTANCES_CSV)
 
         for interaction_file in self.INTERACTIONS_CSVS:
-            with open("clean_" + interaction_file, "w", encoding="utf-8") as cleanfile:
-                _lock, rawfile, _writer = self.csvs[interaction_file]
+            with open(interaction_file, encoding="utf-8") as rawfile, open(
+                "clean_" + interaction_file, "w", encoding="utf-8"
+            ) as cleanfile:
                 data = DictReader(rawfile)
                 writer = DictWriter(cleanfile, fieldnames=self.INTERACTIONS_CSV_FIELDS)
                 writer.writeheader()
@@ -233,22 +235,29 @@ class Crawler:
             raise CrawlerException("No URL to crawl")
 
         self.logger.info("Crawl begins...")
-        tasks = [
-            self.__inspect_instance_with_logging(url) for url in self.crawled_instances
-        ]
 
-        for task in tqdm.as_completed(tasks):
-            await task
+        try:
+            tasks = [
+                self.__inspect_instance_with_logging(url)
+                for url in self.crawled_instances
+            ]
 
-        self.logger.info("Crawl completed!!!")
-        self.logger.info("Processing the data...")
+            for task in tqdm.as_completed(tasks):
+                await task
 
-        self.data_postprocessing()
-        self.data_cleaning()
+            self.logger.info("Crawl completed!!!")
+            self.logger.info("Processing the data...")
 
-        Crawler.compress_csv_files()
+            self.data_postprocessing()
+            self.data_cleaning()
+
+            Crawler.compress_csv_files()
+        except Exception as err:
+            err_msg = str(err)
+            self.logger.error("Crawl failed: %s", err_msg)
+            os.chdir("../")
+            raise err
         self.logger.info("Done.")
-
         os.chdir("../")
 
     async def close(self):
