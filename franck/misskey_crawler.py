@@ -62,7 +62,7 @@ class MisskeyFederationCrawler(FederationCrawler):
 
                 connected_instances += new_connected_instances
 
-                if len(connected_instances) > 10**6:
+                if offset > 10**5:
                     raise ValueError("Infinite loop problem")
 
                 if len(resp) < self.MAX_PAGE_SIZE:
