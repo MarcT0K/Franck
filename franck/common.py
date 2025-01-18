@@ -242,7 +242,9 @@ class Crawler:
                 for url in self.crawled_instances
             ]
 
-            for task in tqdm.as_completed(tasks):
+            for task in tqdm.as_completed(
+                tasks, desc=f"Crawling {self.SOFTWARE} ({self.CRAWL_SUBJECT})"
+            ):
                 await task
 
             self.logger.info("Crawl completed!!!")
