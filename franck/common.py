@@ -2,6 +2,7 @@
 
 import asyncio
 import glob
+from io import TextIOWrapper
 import json
 import logging
 import os
@@ -101,7 +102,7 @@ class Crawler:
         self.concurrent_connection_sem = asyncio.Semaphore(1000)
 
         # CSV locks
-        self.csv_locks: Dict[str, asyncio.Lock] = {}
+        self.csvs: Dict[str, Tuple[asyncio.Lock, TextIOWrapper, DictWriter]] = {}
         self.csv_information: List[Tuple[str, List[str]]] = []
 
         # Initialize HTTP session
@@ -151,10 +152,10 @@ class Crawler:
         self.logger.addHandler(fhandler)
 
     def _init_csv_file(self, filename, fields):
-        with open(filename, "w", encoding="utf-8") as csv_file:
-            writer = DictWriter(csv_file, fieldnames=fields)
-            writer.writeheader()
-        self.csv_locks[filename] = asyncio.Lock()
+        csv_file = open(filename, "w", encoding="utf-8")
+        writer = DictWriter(csv_file, fieldnames=fields)
+        writer.writeheader()
+        self.csvs[filename] = (asyncio.Lock(), csv_file, writer)
 
     def init_all_files(self):
         for filename, fields in self.csv_information:
@@ -185,9 +186,8 @@ class Crawler:
 
         # Remove the unreachable instances
         working_instances = set()
-        with open(self.INSTANCES_CSV, encoding="utf-8") as rawfile, open(
-            "clean_" + self.INSTANCES_CSV, "w", encoding="utf-8"
-        ) as cleanfile:
+        with open("clean_" + self.INSTANCES_CSV, "w", encoding="utf-8") as cleanfile:
+            _lock, rawfile, _writer = self.csvs[self.INSTANCES_CSV]
             data = DictReader(rawfile)
             assert self.INSTANCES_CSV_FIELDS is not None
             writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
@@ -203,9 +203,8 @@ class Crawler:
         os.rename("clean_" + self.INSTANCES_CSV, self.INSTANCES_CSV)
 
         for interaction_file in self.INTERACTIONS_CSVS:
-            with open(interaction_file, encoding="utf-8") as rawfile, open(
-                "clean_" + interaction_file, "w", encoding="utf-8"
-            ) as cleanfile:
+            with open("clean_" + interaction_file, "w", encoding="utf-8") as cleanfile:
+                _lock, rawfile, _writer = self.csvs[interaction_file]
                 data = DictReader(rawfile)
                 writer = DictWriter(cleanfile, fieldnames=self.INTERACTIONS_CSV_FIELDS)
                 writer.writeheader()
@@ -254,6 +253,8 @@ class Crawler:
 
     async def close(self):
         await self.session.close()
+        for _lock, file, _writer in self.csvs.values():
+            file.close()
 
     async def __aenter__(self):
         return self
@@ -315,10 +316,9 @@ class Crawler:
                 raise
 
     async def _write_instance_csv(self, instance_dict):
-        async with self.csv_locks[self.INSTANCES_CSV]:
-            with open(self.INSTANCES_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INSTANCES_CSV_FIELDS)
-                writer.writerow(instance_dict)
+        lock, _file, writer = self.csvs[self.INSTANCES_CSV]
+        async with lock:
+            writer.writerow(instance_dict)
 
     async def _write_connected_instance(
         self,
@@ -327,23 +327,18 @@ class Crawler:
         blocked_instances: Optional[List[str]] = None,
     ):
         assert len(self.INTERACTIONS_CSVS) == 1
-        async with self.csv_locks[self.INTERACTIONS_CSVS[0]]:
-            with open(self.INTERACTIONS_CSVS[0], "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.INTERACTIONS_CSV_FIELDS)
-                for dest in set(connected_instances):
+        lock, _file, writer = self.csvs[self.INTERACTIONS_CSVS[0]]
+        async with lock:
+            for dest in set(connected_instances):
+                if dest in self.crawled_instances:  # Minimizes the cleaning necessary
+                    writer.writerow({"Source": host, "Target": dest, "Weight": 1})
+
+            if blocked_instances is not None:
+                for dest in set(blocked_instances):
                     if (
                         dest in self.crawled_instances
                     ):  # Minimizes the cleaning necessary
-                        writer.writerow({"Source": host, "Target": dest, "Weight": 1})
-
-                if blocked_instances is not None:
-                    for dest in set(blocked_instances):
-                        if (
-                            dest in self.crawled_instances
-                        ):  # Minimizes the cleaning necessary
-                            writer.writerow(
-                                {"Source": host, "Target": dest, "Weight": -1}
-                            )
+                        writer.writerow({"Source": host, "Target": dest, "Weight": -1})
 
     @staticmethod
     def compress_csv_files():

@@ -231,20 +231,19 @@ class MastodonActiveUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.csv_locks[self.CRAWLED_USERS_CSV]:
-            with open(self.CRAWLED_USERS_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.CRAWLED_USERS_FIELDS)
-                for user in users:
-                    writer.writerow(
-                        {
-                            "id": user["id"],
-                            "username": user["username"],
-                            "instance": host,
-                            "followers_count": user["followers_count"],
-                            "following_count": user["following_count"],
-                            "posts_count": user["statuses_count"],
-                        }
-                    )
+        lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
+        async with lock:
+            for user in users:
+                writer.writerow(
+                    {
+                        "id": user["id"],
+                        "username": user["username"],
+                        "instance": host,
+                        "followers_count": user["followers_count"],
+                        "following_count": user["following_count"],
+                        "posts_count": user["statuses_count"],
+                    }
+                )
 
         return users
 
@@ -304,11 +303,10 @@ class MastodonActiveUserCrawler(Crawler):
             max_id = new_max_id
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.csv_locks[self.CRAWLED_FOLLOWS_CSV]:
-            with open(self.CRAWLED_FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)
-                for follow in follow_dicts.values():
-                    writer.writerow(follow)
+        lock, _file, writer = self.csvs[self.CRAWLED_FOLLOWS_CSV]
+        async with lock:
+            for follow in follow_dicts.values():
+                writer.writerow(follow)
 
     def data_postprocessing(self):
         follows_dict = {}

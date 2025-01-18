@@ -163,8 +163,7 @@ class MisskeyTopUserCrawler(Crawler):
         except Exception as err:
             instance_dict["error"] = str(err)
 
-        async with self.csv_locks[self.INSTANCES_CSV]:
-            await self._write_instance_csv(instance_dict)
+        await self._write_instance_csv(instance_dict)
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
@@ -192,21 +191,20 @@ class MisskeyTopUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.csv_locks[self.CRAWLED_USERS_CSV]:
-            with open(self.CRAWLED_USERS_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.CRAWLED_USERS_FIELDS)
-                for user in users:
-                    writer.writerow(
-                        {
-                            "id": user["id"],
-                            "username": user["username"],
-                            "instance": host,
-                            "followers_count": user["followersCount"],
-                            "following_count": user["followingCount"],
-                            "posts_count": user["notesCount"],
-                            "lang": user.get("lang"),
-                        }
-                    )
+        lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
+        async with lock:
+            for user in users:
+                writer.writerow(
+                    {
+                        "id": user["id"],
+                        "username": user["username"],
+                        "instance": host,
+                        "followers_count": user["followersCount"],
+                        "following_count": user["followingCount"],
+                        "posts_count": user["notesCount"],
+                        "lang": user.get("lang"),
+                    }
+                )
 
         return users
 
@@ -246,11 +244,10 @@ class MisskeyTopUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
-        async with self.csv_locks[self.CRAWLED_FOLLOWS_CSV]:
-            with open(self.CRAWLED_FOLLOWS_CSV, "a", encoding="utf-8") as csv_file:
-                writer = DictWriter(csv_file, fieldnames=self.CRAWLED_FOLLOWS_FIELDS)
-                for follow in follow_dicts:
-                    writer.writerow(follow)
+        lock, _file, writer = self.csvs[self.CRAWLED_FOLLOWS_CSV]
+        async with lock:
+            for follow in follow_dicts:
+                writer.writerow(follow)
 
     def data_postprocessing(self):
         follows_dict = {}

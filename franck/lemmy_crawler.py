@@ -303,15 +303,10 @@ class LemmyCommunityCrawler(Crawler):
                 new_communities.append(current_community)
                 local_communities.append(community["community"]["name"])
 
-            async with self.csv_locks[self.COMMUNITY_OWNERSHIP_CSV]:
-                with open(
-                    self.COMMUNITY_OWNERSHIP_CSV, "a", encoding="utf-8"
-                ) as csv_file:
-                    writer = DictWriter(
-                        csv_file, fieldnames=self.COMMUNITY_OWNERSHIP_FIELDS
-                    )
-                    for community_dict in new_communities:
-                        writer.writerow(community_dict)
+            lock, _file, writer = self.csvs[self.COMMUNITY_OWNERSHIP_CSV]
+            async with lock:
+                for community_dict in new_communities:
+                    writer.writerow(community_dict)
 
             if len(resp["communities"]) < self.MAX_PAGE_SIZE:
                 break
@@ -354,15 +349,10 @@ class LemmyCommunityCrawler(Crawler):
                 if current["user_instance"] in self.crawled_instances:
                     new_posts.append(current)
 
-            async with self.csv_locks[self.DETAILED_INTERACTIONS_CSV]:
-                with open(
-                    self.DETAILED_INTERACTIONS_CSV, "a", encoding="utf-8"
-                ) as csv_file:
-                    writer = DictWriter(
-                        csv_file, fieldnames=self.DETAILED_INTERACTIONS_FIELDS
-                    )
-                    for post_dict in new_posts:
-                        writer.writerow(post_dict)
+            lock, _file, writer = self.csvs[self.DETAILED_INTERACTIONS_CSV]
+            async with lock:
+                for post_dict in new_posts:
+                    writer.writerow(post_dict)
 
             total_posts += len(resp["posts"])
 
