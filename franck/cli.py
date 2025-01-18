@@ -31,12 +31,12 @@ def main():
     crawl_parser.add_argument(
         "software",
         help="Fediverse software subject of the crawl",
-        choices=list(SOFTWARE_LAUNCH.keys()) + ["*"],
+        choices=list(SOFTWARE_LAUNCH.keys()) + ["all"],
     )
     args = parser.parse_args()
 
     if args.subcommand == "crawl":
-        if args.software == "*":
+        if args.software == "all":
             errors = []
             for software, launch_function in SOFTWARE_LAUNCH.items():
                 print("Start " + software)
