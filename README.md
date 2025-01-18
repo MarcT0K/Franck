@@ -60,3 +60,12 @@ To start the crawl, you can use the following command:
 ```bash
 franck crawl [mastodon|peertube|lemmy|friendica|bookwyrm|misskey]
 ```
+
+## ⚠️⚠️ WARNING ⚠️⚠️
+
+Even if we developed some load balancing to avoid getting flagged as a DDoS attack by the Fediverse servers, the network traffic induced by `franck` can still be significantly high, especially for Mastodon crawling.
+Thus, you should deploy the crawler in a controlled environment and discuss with your ISP appropriate deployment conditions.
+
+Furthermore, crawling the Web usually raise some privacy concerns.
+Even though our crawler only queries public APIs, we have prepared dedicated GDPR declarations before deploying our own crawlers to be fully compliant.
+We recommend considering GDPR (or any relevant data privacy regulation) if you plan to deploy `franck`.
