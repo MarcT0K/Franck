@@ -37,8 +37,17 @@ def main():
 
     if args.subcommand == "crawl":
         if args.software == "*":
+            errors = []
             for software, launch_function in SOFTWARE_LAUNCH.items():
                 print("Start " + software)
-                asyncio.run(launch_function())
+                try:
+                    asyncio.run(launch_function())
+                except Exception:
+                    errors.append(software)
+
+            if errors:
+                print("All crawl operations finished successfully")
+            else:
+                print("Some crawls failed:" + str(errors))
         else:
             asyncio.run(SOFTWARE_LAUNCH[args.software]())
