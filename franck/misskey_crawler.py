@@ -84,7 +84,7 @@ class MisskeyTopUserCrawler(Crawler):
     CRAWL_SUBJECT = "top_user"
 
     INSTANCES_CSV_FIELDS = [
-        "instance",
+        "host",
         "users_count",
         "posts_count",
         "error",
@@ -151,7 +151,7 @@ class MisskeyTopUserCrawler(Crawler):
 
     async def _fetch_instance_stats(self, host):
         # https://misskey.io/api/stats
-        instance_dict = {"instance": host}
+        instance_dict = {"host": host}
         try:
             stats_dict = await self._fetch_json(
                 "https://" + host + "/api/stats", body={}, op="POST"
