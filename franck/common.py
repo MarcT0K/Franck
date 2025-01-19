@@ -155,6 +155,7 @@ class Crawler:
         csv_file = open(filename, "w", encoding="utf-8")
         writer = DictWriter(csv_file, fieldnames=fields)
         writer.writeheader()
+        csv_file.flush()
         self.csvs[filename] = (asyncio.Lock(), csv_file, writer)
 
     def init_all_files(self):
@@ -173,7 +174,7 @@ class Crawler:
     def data_postprocessing(self):
         pass
 
-    def data_cleaning(self):  # TODO: TEST/DEBUG
+    def data_cleaning(self):
         assert self.SOFTWARE is not None
         assert self.CRAWL_SUBJECT is not None
 
@@ -246,6 +247,8 @@ class Crawler:
                 tasks, desc=f"Crawling {self.SOFTWARE} ({self.CRAWL_SUBJECT})"
             ):
                 await task
+            for _lock, csv_file, _writer in self.csvs.values():
+                csv_file.flush()
 
             self.logger.info("Crawl completed!!!")
             self.logger.info("Processing the data...")
