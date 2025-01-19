@@ -137,7 +137,10 @@ class MisskeyTopUserCrawler(Crawler):
             )
             return
 
-        for user in users:
+        for i, user in enumerate(users):
+            self.logger.debug(
+                "Instance %s: %d users out of %d crawled", host, i, len(users)
+            )
             try:
                 if user["followersCount"] > 0:
                     await self._crawl_user_interactions(host, user)

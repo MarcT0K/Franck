@@ -179,7 +179,7 @@ class MastodonActiveUserCrawler(Crawler):
 
         for ind, user in enumerate(users):
             self.logger.debug(
-                "Instance %s: %d users out of %d crawled", host, ind + 1, len(users)
+                "Instance %s: %d users out of %d crawled", host, ind, len(users)
             )
             try:
                 if user["following_count"] > 0:
