@@ -19,6 +19,8 @@ import requests
 from aiohttp_retry import RetryClient, ExponentialRetry
 from tqdm.asyncio import tqdm
 
+import franck
+
 
 class CrawlerException(Exception):
     """Base exception class for the crawlers"""
@@ -98,6 +100,12 @@ class Crawler:
             + datetime.now().strftime("%Y%m%d-%H%M%S")
         )
         os.mkdir(self.result_dir)
+
+        # Version file
+        with open(
+            self.result_dir + "/version.txt", "w", encoding="utf-8"
+        ) as version_file:
+            version_file.write(franck.__version__)
 
         # Load balacing
         self.concurrent_connection_sem = asyncio.Semaphore(self.NB_SEMAPHORE)
