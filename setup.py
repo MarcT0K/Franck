@@ -14,6 +14,7 @@ setup(
         "aiohttp[speedups]",
         "aiohttp_retry",
         "tqdm",
+        "numpy<=1.26",  # Was creating an import error with pandas when importing the package
         "scipy",
         "pandas",
         "fastparquet",
