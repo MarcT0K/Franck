@@ -34,16 +34,11 @@ class MisskeyFederationCrawler(FederationCrawler):
         connected_instances = []
 
         try:
-            try:
-                stats_dict = await self._fetch_json(
-                    "https://" + host + "/api/stats", body={}, op="POST"
-                )
-                instance_dict["users_count"] = stats_dict["originalUsersCount"]
-                instance_dict["posts_count"] = stats_dict["originalNotesCount"]
-            except TimeoutError:  # Some servers sometimes timeout, IDK why
-                self.logger.warning(
-                    "Instance %s timed out when fetching the stats", host
-                )
+            stats_dict = await self._fetch_json(
+                "https://" + host + "/api/stats", body={}, op="POST"
+            )
+            instance_dict["users_count"] = stats_dict["originalUsersCount"]
+            instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
             offset = 0
             while True:

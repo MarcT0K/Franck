@@ -52,6 +52,7 @@ async def fetch_fediverse_instance_list(software):
 class Crawler:
     SOFTWARE: Optional[str] = None
     CRAWL_SUBJECT: Optional[str] = None
+    NB_SEMAPHORE: int = 100
 
     INTERACTIONS_CSVS = ["interactions.csv"]
     # NB: some crawlers can produce multiple graphs
@@ -99,7 +100,7 @@ class Crawler:
         os.mkdir(self.result_dir)
 
         # Load balacing
-        self.concurrent_connection_sem = asyncio.Semaphore(1000)
+        self.concurrent_connection_sem = asyncio.Semaphore(self.NB_SEMAPHORE)
 
         # CSV locks
         self.csvs: Dict[str, Tuple[asyncio.Lock, TextIOWrapper, DictWriter]] = {}
