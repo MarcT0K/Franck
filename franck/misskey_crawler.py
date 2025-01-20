@@ -142,8 +142,18 @@ class MisskeyTopUserCrawler(Crawler):
                 "Instance %s: %d users out of %d crawled", host, i, len(users)
             )
             try:
-                if user["followersCount"] > 0:
+                if user["followersCount"] == "?":
+                    self.logger.debug(
+                        "Instance %s: user %s has an unknown number of followers [user ignored]",
+                        host,
+                        user["username"],
+                    )
+                elif user["followersCount"] > 0:
                     await self._crawl_user_interactions(host, user)
+                else:
+                    raise CrawlerException(
+                        f"Invalid follower count: {user['followersCount']}"
+                    )
             except CrawlerException as err:
                 self.logger.debug(
                     "Error while crawling the interactions of %s of %s: %s",
