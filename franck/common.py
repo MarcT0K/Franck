@@ -310,7 +310,11 @@ class Crawler:
 
                 async with req_func(url, timeout=180, params=params, json=body) as resp:
                     if resp.status != 200:
-                        err_msg = f"Error code {str(resp.status)} on {url}"
+                        try:
+                            err_data = await resp.read()
+                        except aiohttp.ClientResponseError:
+                            err_data = "Cannot read the response data"
+                        err_msg = f"Error code {str(resp.status)} on {url}: {err_data}"
                         self.logger.error(err_msg)
                         raise CrawlerException(err_msg)
                     data = await resp.read()
