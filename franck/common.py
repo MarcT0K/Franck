@@ -314,8 +314,9 @@ class Crawler:
                             err_data = await resp.read()
                         except aiohttp.ClientResponseError:
                             err_data = "Cannot read the response data"
-                        err_msg = f"Error code {str(resp.status)} on {url}: {err_data}"
+                        err_msg = f"Error code {str(resp.status)} on {url}"
                         self.logger.error(err_msg)
+                        self.logger.debug("Error response: %s", err_data)
                         raise CrawlerException(err_msg)
                     data = await resp.read()
                     try:
