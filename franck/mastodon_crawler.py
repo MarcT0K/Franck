@@ -194,7 +194,7 @@ class MastodonActiveUserCrawler(Crawler):
                 self.logger.debug(err_msg)
                 nb_failure += 1
 
-            if nb_failure > self.FAILURE_TOLERANCE:
+            if nb_failure > self.FAILURE_TOLERANCE * len(users):
                 instance_dict["error"] = (
                     "Too many failures while crawling user interactions"
                 )
