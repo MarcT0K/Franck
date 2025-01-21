@@ -118,7 +118,7 @@ class Crawler:
         aiohttp_session = aiohttp.ClientSession(
             headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
         )
-        retry_options = ExponentialRetry(attempts=3)
+        retry_options = ExponentialRetry(attempts=3, start_timeout=5)
         self.session = RetryClient(
             client_session=aiohttp_session, retry_options=retry_options
         )

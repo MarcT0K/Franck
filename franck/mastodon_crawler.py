@@ -16,7 +16,7 @@ from .common import (
     fetch_fediverse_instance_list,
 )
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
+DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.4
 
 
 class MastodonFederationCrawler(FederationCrawler):
@@ -98,7 +98,7 @@ class MastodonActiveUserCrawler(Crawler):
     MAX_PAGE_SIZE = 80
     MAX_ID_REGEX = r"max_id=(\d+)"
 
-    def __init__(self, urls, nb_active_users=10000):
+    def __init__(self, urls, nb_active_users=1000):
         super().__init__(urls)
 
         self.nb_active_users = nb_active_users
