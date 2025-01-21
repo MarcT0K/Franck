@@ -162,7 +162,7 @@ class MastodonActiveUserCrawler(Crawler):
 
     async def inspect_instance(self, host):
         try:
-            await self._fetch_instance_info(host)
+            instance_dict = await self._fetch_instance_info(host)
         except CrawlerException as err:
             self.logger.debug(
                 "Error while crawling the information of %s: %s", host, str(err)
@@ -172,10 +172,10 @@ class MastodonActiveUserCrawler(Crawler):
         try:
             users = await self._crawl_user_list(host)
         except CrawlerException as err:
-            self.logger.debug(
-                "Error while crawling the user list of %s: %s", host, str(err)
-            )
-            return
+            users = []
+            err_msg = f"Error while crawling the user list of {host}: " + str(err)
+            self.logger.debug(err_msg)
+            instance_dict["error"] = err_msg
 
         for ind, user in enumerate(users):
             self.logger.debug(
@@ -185,12 +185,14 @@ class MastodonActiveUserCrawler(Crawler):
                 if user["following_count"] > 0:
                     await self._crawl_user_interactions(host, user)
             except CrawlerException as err:
-                self.logger.debug(
-                    "Error while crawling the interactions of %s of %s: %s",
-                    user["id"],
-                    host,
-                    str(err),
+                err_msg = (
+                    f"Error while crawling the interactions of {user['id']} of {host}: "
+                    + str(err)
                 )
+                self.logger.debug(err_msg)
+                instance_dict["error"] = err_msg
+
+        await self._write_instance_csv(instance_dict)
 
     async def _fetch_instance_info(self, host):
         instance_dict = {"host": host}
@@ -204,7 +206,7 @@ class MastodonActiveUserCrawler(Crawler):
         except Exception as err:
             instance_dict["error"] = str(err)
 
-        await self._write_instance_csv(instance_dict)
+        return instance_dict
 
     async def _crawl_user_list(self, host):
         users = []
@@ -253,10 +255,14 @@ class MastodonActiveUserCrawler(Crawler):
         max_id = None
         while True:
             params = {"max_id": max_id} if max_id is not None else None
-            resp, new_max_id = await self._fetch_json_with_pagination(
-                f"https://{host}/api/v1/accounts/{user_info['id']}/following",
-                params=params,
-            )
+            try:
+                resp, new_max_id = await self._fetch_json_with_pagination(
+                    f"https://{host}/api/v1/accounts/{user_info['id']}/following",
+                    params=params,
+                )
+            except AttributeError as err:
+                err_msg = f"Instance {host}: Invalid pagination while crawling user interactions of {user_info}"
+                raise CrawlerException(err_msg) from err
 
             for followee_dict in resp:
                 # NB: Sometimes, the API was returning some duplicates (idk why...)

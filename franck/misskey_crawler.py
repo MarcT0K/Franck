@@ -127,15 +127,15 @@ class MisskeyTopUserCrawler(Crawler):
         ]
 
     async def inspect_instance(self, host):
-        await self._fetch_instance_stats(host)
+        instance_dict = await self._fetch_instance_stats(host)
 
         try:
             users = await self._crawl_user_list(host)
         except CrawlerException as err:
-            self.logger.debug(
-                "Error while crawling the user list of %s: %s", host, str(err)
-            )
-            return
+            users = []
+            err_msg = f"Error while crawling the user list of {host}: " + str(err)
+            self.logger.debug(err_msg)
+            instance_dict["error"] = err_msg
 
         for i, user in enumerate(users):
             self.logger.debug(
@@ -155,12 +155,14 @@ class MisskeyTopUserCrawler(Crawler):
                         f"Invalid follower count: {user['followersCount']}"
                     )
             except CrawlerException as err:
-                self.logger.debug(
-                    "Error while crawling the interactions of %s of %s: %s",
-                    user["id"],
-                    host,
-                    str(err),
+                err_msg = (
+                    f"Error while crawling the interactions of {user['id']} of {host}: "
+                    + str(err)
                 )
+                self.logger.debug(err_msg)
+                instance_dict["error"] = err_msg
+
+        await self._write_instance_csv(instance_dict)
 
     async def _fetch_instance_stats(self, host):
         # https://misskey.io/api/stats
@@ -176,7 +178,7 @@ class MisskeyTopUserCrawler(Crawler):
         except Exception as err:
             instance_dict["error"] = str(err)
 
-        await self._write_instance_csv(instance_dict)
+        return instance_dict
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
