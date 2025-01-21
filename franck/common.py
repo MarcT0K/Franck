@@ -119,7 +119,11 @@ class Crawler:
             headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
         )
         retry_options = ExponentialRetry(
-            attempts=10, start_timeout=1, statuses={429}, retry_all_server_errors=True
+            attempts=10,
+            start_timeout=10,
+            max_timeout=60,
+            statuses={429},
+            retry_all_server_errors=True,
         )
         self.session = RetryClient(
             client_session=aiohttp_session, retry_options=retry_options
