@@ -97,6 +97,7 @@ class MastodonActiveUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 80
     MAX_ID_REGEX = r"max_id=(\d+)"
+    FAILURE_TOLERANCE = 0.05
 
     def __init__(self, urls, nb_active_users=1000):
         super().__init__(urls)
@@ -177,6 +178,7 @@ class MastodonActiveUserCrawler(Crawler):
             self.logger.debug(err_msg)
             instance_dict["error"] = err_msg
 
+        nb_failure = 0
         for ind, user in enumerate(users):
             self.logger.debug(
                 "Instance %s: %d users out of %d crawled", host, ind, len(users)
@@ -190,7 +192,13 @@ class MastodonActiveUserCrawler(Crawler):
                     + str(err)
                 )
                 self.logger.debug(err_msg)
-                instance_dict["error"] = err_msg
+                nb_failure += 1
+
+            if nb_failure > self.FAILURE_TOLERANCE:
+                instance_dict["error"] = (
+                    "Too many failures while crawling user interactions"
+                )
+                break
 
         await self._write_instance_csv(instance_dict)
 
