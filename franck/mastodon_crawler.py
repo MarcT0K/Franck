@@ -244,7 +244,7 @@ class MastodonActiveUserCrawler(Crawler):
 
         lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
         async with lock:
-            for user in users:
+            for user in users.values():
                 writer.writerow(
                     {
                         "id": user["id"],
