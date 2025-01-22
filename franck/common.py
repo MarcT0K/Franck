@@ -16,7 +16,7 @@ import colorlog
 import pandas as pd
 import requests
 
-from aiohttp_retry import RetryClient, ExponentialRetry
+from aiohttp_retry import RetryClient, ListRetry
 from tqdm.asyncio import tqdm
 
 import franck
@@ -118,10 +118,8 @@ class Crawler:
         aiohttp_session = aiohttp.ClientSession(
             headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
         )
-        retry_options = ExponentialRetry(
-            attempts=10,
-            start_timeout=10,
-            max_timeout=60,
+        retry_options = ListRetry(
+            timeouts=[30, 60, 180, 300, 600],
             statuses={429},
             retry_all_server_errors=True,
         )
