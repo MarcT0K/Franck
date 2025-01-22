@@ -21,7 +21,7 @@ Thus, building a complete graph of the Fediverse is an interesting future work, 
 
 ### "Federation" graphs
 
-The "Federation" graphs is provided for Bookwyrm, Friendica, Lemmy, Mastodon, Misskey, Pleroma/Akkoma, and Peertube.
+Available on: Bookwyrm, Friendica, Lemmy, Mastodon, Misskey, Pleroma/Akkoma, and Peertube.
 
 Most Fediverse software provide an API endpoint such as `api/instance/peers` listing all the ActivityPub servers to which an instance is connected.
 The federation graph represent these connections.
@@ -54,26 +54,18 @@ Such graphs accurately represent the interaction in the evolutions compared to o
 
 Thus, Lemmy community graphs are valuable to obtain graphs with a realistic temporal evolution.
 
-### Mastodon/Pleroma/Akkoma "Active Users" graphs
+### "Active Users" graphs
 
+Available on: Mastodon, Misskey, Pleroma/Akkoma
 
-The Misskey "Top Users" crawler extracts the 10K most recently active users from each instance and analyse their following lists.
+The active crawler extracts the 1K most recently active users from each instance and analyse their following lists.
 In this graph, Server A interacts with Server B if a recently active user from server A follows a user from Server B.
 The graph is directed and the weight of each weight is equal to the total number of follows from A to B.
 
 We rely on the recently active users to avoid querying all the Mastodon users.
+Focusing on recently active users would provide a coherent temporal evolution. 
 This technique significantly reduces the network traffic while providing a coherent estimation of the interactions.
 
-We provide the exact same graph for Pleroma/Akkoma.
-
-### Misskey "Top Users" graphs
-
-The Misskey "Top Users" crawler extracts the 1K most followed users from each instance and analyse their follower lists.
-In this graph, Server A interacts with Server B if a user from server A follows one of the most followed users from Server B.
-The graph is directed and the weight of each weight is equal to the total number of follows from A to B.
-
-We rely on the most followed users to avoid querying all the Misskey users.
-This technique significantly reduces the network traffic while providing a coherent estimation of the interactions.
 
 ## Adding new graphs?
 
@@ -85,7 +77,7 @@ Similarly, some software require authentication to access some endpoints.
 We respect the will of these servers, and rely only on Public APIS.
 Hence, some Fediverse social media are not yet support by `franck`.
 Currently, Fediverse developers focused (legitimately) their efforts on endpoints useful to developers.
-Our research could be an incentive for Fediverse developpers to provide more API endpoints; facilitating research on the Fediverse.
+Our research could be an incentive for Fediverse developers to provide more API endpoints; facilitating research on the Fediverse.
 
 If you identify a new Fediverse social media compatible with our approach, **do not hesitate to create an issue or submit a pull request**.
 The file `common.py` provides base classes from which crawler can be implemented.

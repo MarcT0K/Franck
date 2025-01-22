@@ -217,7 +217,7 @@ class MastodonActiveUserCrawler(Crawler):
         return instance_dict
 
     async def _crawl_user_list(self, host):
-        users = []
+        users = {}
         offset = 0
 
         while len(users) < self.nb_active_users:
@@ -232,7 +232,8 @@ class MastodonActiveUserCrawler(Crawler):
                 "https://" + host + "/api/v1/directory", params=params
             )
 
-            users.extend(resp)
+            for user in resp:
+                users[user["username"]] = user
 
             if len(resp) < self.MAX_PAGE_SIZE:
                 break

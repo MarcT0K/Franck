@@ -79,9 +79,9 @@ class MisskeyFederationCrawler(FederationCrawler):
         await self._write_connected_instance(host, connected_instances)
 
 
-class MisskeyTopUserCrawler(Crawler):
+class MisskeyActiveUserCrawler(Crawler):
     SOFTWARE = "misskey"
-    CRAWL_SUBJECT = "top_user"
+    CRAWL_SUBJECT = "active_user"
 
     INSTANCES_CSV_FIELDS = [
         "host",
@@ -114,10 +114,10 @@ class MisskeyTopUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 100
 
-    def __init__(self, urls, nb_top_users=1000):
+    def __init__(self, urls, nb_active_users=1000):
         super().__init__(urls)
 
-        self.nb_top_users = nb_top_users
+        self.nb_active_users = nb_active_users
 
         self.csv_information = [
             (self.INSTANCES_CSV, self.INSTANCES_CSV_FIELDS),
@@ -182,22 +182,26 @@ class MisskeyTopUserCrawler(Crawler):
 
     async def _crawl_user_list(self, host):
         # https://misskey.io/api/users
-        users = []
+        users = {}
         offset = 0
 
-        while len(users) < self.nb_top_users:
-            nb_missing_users = self.nb_top_users - len(users)
+        while len(users) < self.nb_active_users:
+            nb_missing_users = self.nb_active_users - len(users)
             body = {
                 "limit": min(self.MAX_PAGE_SIZE, nb_missing_users),
                 "offset": offset,
                 "origin": "local",
-                "sort": "+follower",
+                "sort": "+updatedAt",
             }
             resp = await self._fetch_json(
                 "https://" + host + "/api/users", body=body, op="POST"
             )
 
-            users.extend(resp)
+            for user in resp:
+                users[user["username"]] = user
+                # Since users can publish at anytime,
+                # The list of active users can shift
+                # The shift could cause a give user to be seen multiple times
 
             if len(resp) < self.MAX_PAGE_SIZE:
                 break
@@ -296,5 +300,5 @@ async def launch_misskey_crawl():
     async with MisskeyFederationCrawler(start_urls) as crawler:
         await crawler.launch()
 
-    async with MisskeyTopUserCrawler(start_urls) as crawler:
+    async with MisskeyActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
