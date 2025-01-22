@@ -210,9 +210,10 @@ class MisskeyActiveUserCrawler(Crawler):
 
             await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
 
+        user_list = users.values()
         lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
         async with lock:
-            for user in users.values():
+            for user in user_list:
                 writer.writerow(
                     {
                         "id": user["id"],
@@ -225,7 +226,7 @@ class MisskeyActiveUserCrawler(Crawler):
                     }
                 )
 
-        return users
+        return user_list
 
     async def _crawl_user_interactions(self, host, user_info):
         follow_dicts = []
