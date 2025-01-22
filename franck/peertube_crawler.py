@@ -59,8 +59,7 @@ class PeertubeCrawler(FederationCrawler):
                     params={"count": 100, "start": i},
                 )
                 for link_dict in followers_dict["data"]:
-                    if link_dict["follower"]["name"] == "peertube":
-                        # We avoid Mastodon followers
+                    if link_dict["follower"]["host"] in self.crawled_instances:
                         follower_links.append((link_dict["follower"]["host"], host))
             instance_dict["totalPeertubeInstanceFollowers"] = str(len(follower_links))
 
@@ -76,8 +75,7 @@ class PeertubeCrawler(FederationCrawler):
                     params={"count": 100, "start": i},
                 )
                 for link_dict in followees_dict["data"]:
-                    if link_dict["following"]["name"] == "peertube":
-                        # We avoid Mastodon followers
+                    if link_dict["follower"]["host"] in self.crawled_instances:
                         follower_links.append((host, link_dict["following"]["host"]))
             instance_dict["totalPeertubeInstanceFollowing"] = str(
                 len(follower_links)
@@ -98,7 +96,12 @@ class PeertubeCrawler(FederationCrawler):
             self.logger.debug("Error with instance " + host + " : " + str_err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_connected_instance(host, follower_links)
+
+        assert len(self.INTERACTIONS_CSVS) == 1
+        lock, _file, writer = self.csvs[self.INTERACTIONS_CSVS[0]]
+        async with lock:
+            for source, dest in follower_links:
+                writer.writerow({"Source": source, "Target": dest, "Weight": 1})
 
 
 async def launch_peertube_crawl():
