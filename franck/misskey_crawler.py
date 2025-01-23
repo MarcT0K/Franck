@@ -142,17 +142,23 @@ class MisskeyActiveUserCrawler(Crawler):
                 "Instance %s: %d users out of %d crawled", host, i, len(users)
             )
             try:
-                if user["followersCount"] == "?":
+                if user["followingCount"] == "?":
                     self.logger.debug(
                         "Instance %s: user %s has an unknown number of followers [user ignored]",
                         host,
                         user["username"],
                     )
-                elif user["followersCount"] > 0:
+                elif user["followingCount"] > 0:
                     await self._crawl_user_interactions(host, user)
+                elif user["followingCount"] == 0:
+                    self.logger.debug(
+                        "Instance %s: user %s has no followe [user ignored]",
+                        host,
+                        user["username"],
+                    )
                 else:
                     raise CrawlerException(
-                        f"Invalid follower count: {user['followersCount']}"
+                        f"Invalid follower count: {user['followingCount']}"
                     )
             except CrawlerException as err:
                 err_msg = (
@@ -240,7 +246,7 @@ class MisskeyActiveUserCrawler(Crawler):
                 "host": host,
             }
             resp = await self._fetch_json(
-                "https://" + host + "/api/users/followers", body=body, op="POST"
+                "https://" + host + "/api/users/following", body=body, op="POST"
             )
 
             host_check = lambda host_input: host if host_input is None else host_input
