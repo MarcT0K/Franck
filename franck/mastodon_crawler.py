@@ -99,7 +99,7 @@ class MastodonActiveUserCrawler(Crawler):
     MAX_ID_REGEX = r"max_id=(\d+)"
     FAILURE_TOLERANCE = 0.05
 
-    def __init__(self, urls, nb_active_users=1000):
+    def __init__(self, urls, nb_active_users=10000):
         super().__init__(urls)
 
         self.nb_active_users = nb_active_users

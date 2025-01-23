@@ -12,7 +12,7 @@ from .common import (
 )
 
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
+DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.4
 
 
 class MisskeyFederationCrawler(FederationCrawler):
@@ -114,7 +114,7 @@ class MisskeyActiveUserCrawler(Crawler):
 
     MAX_PAGE_SIZE = 100
 
-    def __init__(self, urls, nb_active_users=1000):
+    def __init__(self, urls, nb_active_users=10000):
         super().__init__(urls)
 
         self.nb_active_users = nb_active_users
