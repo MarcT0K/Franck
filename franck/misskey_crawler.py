@@ -152,13 +152,16 @@ class MisskeyActiveUserCrawler(Crawler):
                     await self._crawl_user_interactions(host, user)
                 elif user["followingCount"] == 0:
                     self.logger.debug(
-                        "Instance %s: user %s has no followe [user ignored]",
+                        "Instance %s: user %s has no followee [user ignored]",
                         host,
                         user["username"],
                     )
                 else:
-                    raise CrawlerException(
-                        f"Invalid follower count: {user['followingCount']}"
+                    self.logger.debug(
+                        "Instance %s: user %s has an invalid followee cound: %d [user ignored]",
+                        host,
+                        user["username"],
+                        user["followingCount"],
                     )
             except CrawlerException as err:
                 err_msg = (
