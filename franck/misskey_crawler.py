@@ -252,14 +252,14 @@ class MisskeyActiveUserCrawler(Crawler):
             host_check = lambda host_input: host if host_input is None else host_input
 
             for follow_dict in resp:
-                follower_instance = host_check(follow_dict["follower"]["host"])
-                if follower_instance in self.crawled_instances:
+                following_instance = host_check(follow_dict["following"]["host"])
+                if following_instance in self.crawled_instances:
                     follow_dicts.append(
                         {
-                            "follower": follow_dict["follower"]["username"],
-                            "follower_instance": follower_instance,
-                            "followee": user_info["username"],
-                            "followee_instance": host_check(user_info["host"]),
+                            "followee": follow_dict["following"]["username"],
+                            "followee_instance": following_instance,
+                            "follower": user_info["username"],
+                            "follower_instance": host_check(user_info["host"]),
                         }
                     )
 
