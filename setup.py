@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="franck",
-    version="0.9.2",
+    version="0.9.3",
     url="https://github.com/MarcT0K/Franck",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",

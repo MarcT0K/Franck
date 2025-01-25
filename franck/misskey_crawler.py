@@ -113,6 +113,7 @@ class MisskeyActiveUserCrawler(Crawler):
     TEMP_FILES = [CRAWLED_FOLLOWS_CSV, CRAWLED_USERS_CSV]
 
     MAX_PAGE_SIZE = 100
+    FAILURE_TOLERANCE = 0.05
 
     def __init__(self, urls, nb_active_users=10000):
         super().__init__(urls)
@@ -137,6 +138,7 @@ class MisskeyActiveUserCrawler(Crawler):
             self.logger.debug(err_msg)
             instance_dict["error"] = err_msg
 
+        nb_failure = 0
         for i, user in enumerate(users):
             self.logger.debug(
                 "Instance %s: %d users out of %d crawled", host, i, len(users)
@@ -169,7 +171,13 @@ class MisskeyActiveUserCrawler(Crawler):
                     + str(err)
                 )
                 self.logger.debug(err_msg)
-                instance_dict["error"] = err_msg
+                nb_failure += 1
+
+            if nb_failure > self.FAILURE_TOLERANCE * len(users):
+                instance_dict["error"] = (
+                    "Too many failures while crawling user interactions"
+                )
+                break
 
         await self._write_instance_csv(instance_dict)
 
