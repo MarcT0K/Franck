@@ -9,6 +9,7 @@ from .common import (
 
 class BookwyrmFederationCrawler(FederationCrawler):
     SOFTWARE = "bookwyrm"
+    API_ENDPOINTS = ["/api/v1/instance", "/api/v1/instance/peers"]
     INSTANCES_CSV_FIELDS = [
         "host",
         "version",

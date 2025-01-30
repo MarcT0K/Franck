@@ -1,10 +1,15 @@
 "Peertube graph crawler"
-import fileinput
 from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
 
 class PeertubeCrawler(FederationCrawler):
     SOFTWARE = "peertube"
+    API_ENDPOINTS = [
+        "/api/v1/server/following",
+        "/api/v1/server/followers",
+        "/api/v1/server/stats",
+        "/api/v1/config",
+    ]
     INSTANCES_CSV_FIELDS = [
         "host",
         "totalUsers",

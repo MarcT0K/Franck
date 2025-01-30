@@ -19,6 +19,7 @@ from .common import (
 
 class MastodonFederationCrawler(FederationCrawler):
     SOFTWARE = "mastodon"
+    API_ENDPOINTS = ["/api/v1/instance", "/api/v1/instance/peers"]
     INSTANCES_CSV_FIELDS = [
         "host",
         "version",
@@ -61,6 +62,11 @@ class MastodonFederationCrawler(FederationCrawler):
 class MastodonActiveUserCrawler(Crawler):
     SOFTWARE = "mastodon"
     CRAWL_SUBJECT = "active_user"
+    API_ENDPOINTS = [
+        "/api/v1/instance",
+        "/api/v1/directory",
+        "/api/v1/accounts/:id/following",
+    ]
 
     INSTANCES_CSV_FIELDS = [
         "host",
@@ -260,6 +266,8 @@ class MastodonActiveUserCrawler(Crawler):
     async def _crawl_user_interactions(self, host, user_info):
         follow_dicts = {}
 
+        # TODO: add the #nobot
+
         max_id = None
         while True:
             params = {"max_id": max_id} if max_id is not None else None
@@ -290,15 +298,6 @@ class MastodonActiveUserCrawler(Crawler):
                         "follower": user_info["username"],
                         "follower_instance": host,
                     }
-
-            # if len(follow_dicts) > user_info["following_count"]: # Had problems when the users were following/unfollowing during the crawl
-            #     raise ValueError(
-            #         "Found %s followees instead of %s for user %s",
-            #         len(follow_dicts),
-            #         user_info["following_count"],
-            #         user_info["username"],
-            #         list(follow_dicts.keys()),
-            #     )
 
             if new_max_id is None:
                 if (

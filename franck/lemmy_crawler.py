@@ -17,6 +17,7 @@ from .common import (
 
 class LemmyFederationCrawler(FederationCrawler):
     SOFTWARE = "lemmy"
+    API_ENDPOINTS = ["/api/v3/site", "/api/v3/federated_instances"]
     INSTANCES_CSV_FIELDS = [
         "host",
         "version",
@@ -112,6 +113,7 @@ class LemmyFederationCrawler(FederationCrawler):
 class LemmyCommunityCrawler(Crawler):
     SOFTWARE = "lemmy"
     CRAWL_SUBJECT = "community"
+    API_ENDPOINTS = ["/api/v3/site", "/api/v3/community/list", "/api/v3/post/list"]
 
     INSTANCES_CSV_FIELDS = [
         "host",

@@ -14,6 +14,7 @@ from .common import (
 
 class MisskeyFederationCrawler(FederationCrawler):
     SOFTWARE = "misskey"
+    API_ENDPOINTS = ["/api/federation/instances", "/api/stats"]
     INSTANCES_CSV_FIELDS = [
         "host",
         "users_count",
@@ -79,6 +80,7 @@ class MisskeyFederationCrawler(FederationCrawler):
 class MisskeyActiveUserCrawler(Crawler):
     SOFTWARE = "misskey"
     CRAWL_SUBJECT = "active_user"
+    API_ENDPOINTS = ["/api/stats", "/api/users", "/api/users/following"]
 
     INSTANCES_CSV_FIELDS = [
         "host",
@@ -179,7 +181,6 @@ class MisskeyActiveUserCrawler(Crawler):
         await self._write_instance_csv(instance_dict)
 
     async def _fetch_instance_stats(self, host):
-        # https://misskey.io/api/stats
         instance_dict = {"host": host}
         try:
             stats_dict = await self._fetch_json(
@@ -195,7 +196,6 @@ class MisskeyActiveUserCrawler(Crawler):
         return instance_dict
 
     async def _crawl_user_list(self, host):
-        # https://misskey.io/api/users
         users = {}
         offset = 0
 

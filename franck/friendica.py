@@ -9,6 +9,7 @@ from .common import (
 
 class FriendicaFederationCrawler(FederationCrawler):
     SOFTWARE = "friendica"
+    API_ENDPOINTS = ["/api/v1/instance", "/api/v1/instance/peers"]
     INSTANCES_CSV_FIELDS = [
         "host",
         "version",
