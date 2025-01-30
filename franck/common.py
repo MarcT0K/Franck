@@ -6,10 +6,12 @@ from io import TextIOWrapper
 import json
 import logging
 import os
+
 from abc import abstractmethod
 from csv import DictReader, DictWriter
 from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from urllib import robotparser
 
 import aiohttp
 import colorlog
@@ -20,6 +22,8 @@ from aiohttp_retry import RetryClient, ListRetry
 from tqdm.asyncio import tqdm
 
 import franck
+
+DEFAULT_DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.4
 
 
 class CrawlerException(Exception):
@@ -52,9 +56,16 @@ async def fetch_fediverse_instance_list(software):
 
 
 class Crawler:
+    USER_AGENT = (
+        "Franck, the Fediverse Graph Crawler (https://github.com/MarcT0K/Franck)"
+    )
     SOFTWARE: Optional[str] = None
     CRAWL_SUBJECT: Optional[str] = None
     NB_SEMAPHORE: int = 100
+
+    DELAY_PER_HOST: Dict[str, float] = {}
+
+    API_ENDPOINTS: List[str] = []
 
     INTERACTIONS_CSVS = ["interactions.csv"]
     # NB: some crawlers can produce multiple graphs
@@ -115,9 +126,7 @@ class Crawler:
         self.csv_information: List[Tuple[str, List[str]]] = []
 
         # Initialize HTTP session
-        aiohttp_session = aiohttp.ClientSession(
-            headers={"User-Agent": "Fediverse Graph Crawler (Academic Research)"}
-        )
+        aiohttp_session = aiohttp.ClientSession(headers={"User-Agent": self.USER_AGENT})
         retry_options = ListRetry(
             timeouts=[30, 60, 180, 300, 600],
             statuses={429},
@@ -163,6 +172,42 @@ class Crawler:
         )
         fhandler.setLevel(logging.DEBUG)
         self.logger.addHandler(fhandler)
+
+    def _parse_robots_txt(self, host):
+        if not self.API_ENDPOINTS:
+            raise ValueError("Invalid crawler: no API endpoint listed")
+
+        parser = robotparser.RobotFileParser(host)
+        parser.read()
+
+        for url in self.API_ENDPOINTS:
+            if not parser.can_fetch(self.USER_AGENT, url) or not parser.can_fetch(
+                self.USER_AGENT, url + "/"
+            ):
+                raise CrawlerException(f"robots.txt of {host} disallows the crawl")
+
+        req_rate = parser.request_rate(self.USER_AGENT)
+        if req_rate is not None:
+            self.DELAY_PER_HOST[host] = req_rate.requests / req_rate.seconds
+
+        crawl_delay = parser.crawl_delay(self.USER_AGENT)
+        if crawl_delay is not None:
+            try:
+                self.DELAY_PER_HOST[host] = float(crawl_delay)
+            except ValueError:
+                pass  # Invalid format
+
+        if host not in self.DELAY_PER_HOST:
+            self.DELAY_PER_HOST[host] = DEFAULT_DELAY_BETWEEN_CONSECUTIVE_REQUESTS
+
+    def _get_crawl_delay(self, host):
+        """Returns the crawl delay for a specific host."""
+        try:
+            return self.DELAY_PER_HOST[host]
+        except KeyError as err:
+            raise CrawlerException(
+                f"The robots.txt of {host} has not been parsed."
+            ) from err
 
     def _init_csv_file(self, filename, fields):
         csv_file = open(filename, "w", encoding="utf-8")
@@ -247,6 +292,18 @@ class Crawler:
 
         if not self.crawled_instances:
             raise CrawlerException("No URL to crawl")
+
+        allowed_crawled_instances = []
+        for host in self.crawled_instances:
+            try:
+                self._parse_robots_txt(host)  # Raise error if not allowed
+                allowed_crawled_instances.append(host)
+            except CrawlerException as err:
+                err_msg = str(err)
+                self.logger.warning(err_msg)
+                await self._write_instance_csv({"host": host, "error": err_msg})
+
+        self.crawled_instances = allowed_crawled_instances
 
         self.logger.info("Crawl begins...")
 

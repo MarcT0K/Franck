@@ -12,9 +12,6 @@ from .common import (
 )
 
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.4
-
-
 class MisskeyFederationCrawler(FederationCrawler):
     SOFTWARE = "misskey"
     INSTANCES_CSV_FIELDS = [
@@ -70,7 +67,7 @@ class MisskeyFederationCrawler(FederationCrawler):
 
                 offset += self.MAX_PAGE_SIZE
 
-                await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+                await asyncio.sleep(self._get_crawl_delay(host))
 
         except CrawlerException as err:
             instance_dict["error"] = str(err)
@@ -225,7 +222,7 @@ class MisskeyActiveUserCrawler(Crawler):
 
             offset += self.MAX_PAGE_SIZE
 
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
 
         user_list = users.values()
         lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
@@ -279,7 +276,7 @@ class MisskeyActiveUserCrawler(Crawler):
 
             last_id = resp[-1]["id"]
 
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
 
         lock, _file, writer = self.csvs[self.CRAWLED_FOLLOWS_CSV]
         async with lock:

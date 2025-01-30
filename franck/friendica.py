@@ -6,8 +6,6 @@ from .common import (
     fetch_fediverse_instance_list,
 )
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
-
 
 class FriendicaFederationCrawler(FederationCrawler):
     SOFTWARE = "friendica"

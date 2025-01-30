@@ -45,7 +45,7 @@ def main():
                 except Exception:
                     errors.append(software)
 
-            if errors:
+            if not errors:
                 print("All crawl operations finished successfully")
             else:
                 print("Some crawls failed:" + str(errors))

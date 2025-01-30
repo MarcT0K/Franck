@@ -16,8 +16,6 @@ from .common import (
     fetch_fediverse_instance_list,
 )
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.4
-
 
 class MastodonFederationCrawler(FederationCrawler):
     SOFTWARE = "mastodon"
@@ -240,7 +238,7 @@ class MastodonActiveUserCrawler(Crawler):
 
             offset += self.MAX_PAGE_SIZE
 
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
 
         user_list = users.values()
         lock, _file, writer = self.csvs[self.CRAWLED_USERS_CSV]
@@ -317,7 +315,7 @@ class MastodonActiveUserCrawler(Crawler):
                 break
 
             max_id = new_max_id
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
 
         lock, _file, writer = self.csvs[self.CRAWLED_FOLLOWS_CSV]
         async with lock:

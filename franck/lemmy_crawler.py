@@ -2,7 +2,7 @@
 
 import asyncio
 
-from csv import DictWriter, DictReader
+from csv import DictReader
 import urllib.parse
 
 import scipy.sparse as sp
@@ -13,8 +13,6 @@ from .common import (
     FederationCrawler,
     fetch_fediverse_instance_list,
 )
-
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
 
 
 class LemmyFederationCrawler(FederationCrawler):
@@ -312,7 +310,7 @@ class LemmyCommunityCrawler(Crawler):
                 break
 
             page += 1
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
         return local_communities
 
     async def crawl_community_posts(self, host, community):
@@ -360,7 +358,7 @@ class LemmyCommunityCrawler(Crawler):
                 break
 
             page += 1
-            await asyncio.sleep(DELAY_BETWEEN_CONSECUTIVE_REQUESTS)
+            await asyncio.sleep(self._get_crawl_delay(host))
 
     def data_postprocessing(self):
         # NB: No concurrent tasks so we do not need the locks

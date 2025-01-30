@@ -3,8 +3,6 @@
 from .common import fetch_fediverse_instance_list
 from .mastodon_crawler import MastodonActiveUserCrawler, MastodonFederationCrawler
 
-DELAY_BETWEEN_CONSECUTIVE_REQUESTS = 0.2
-
 
 class PleromaFederationCrawler(MastodonFederationCrawler):
     SOFTWARE = "pleroma"
