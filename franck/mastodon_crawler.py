@@ -266,7 +266,13 @@ class MastodonActiveUserCrawler(Crawler):
     async def _crawl_user_interactions(self, host, user_info):
         follow_dicts = {}
 
-        # TODO: add the #nobot
+        if "#<span>nobot</span>" in user_info["note"]:
+            self.logger.debug(
+                "User %s@%s has the #nobot tag (user skipped).",
+                user_info["username"],
+                host,
+            )
+            return
 
         max_id = None
         while True:
