@@ -173,21 +173,44 @@ class Crawler:
         fhandler.setLevel(logging.DEBUG)
         self.logger.addHandler(fhandler)
 
-    def _parse_robots_txt(self, host):
+    async def _parse_robots_txt(self, host) -> Tuple[str, bool]:
         if not self.API_ENDPOINTS:
             raise ValueError("Invalid crawler: no API endpoint listed")
 
-        parser = robotparser.RobotFileParser(f"https://{host}/robots.txt")
-        parser.read()
+        robots_url = f"https://{host}/robots.txt"
+        async with self.concurrent_connection_sem:
+            try:
+                async with self.session.get(robots_url, timeout=180) as resp:
+                    if resp.status == 404:
+                        self.logger.debug("Instance %s has no robots.txt", host)
+                        return (host, True)
+                    elif resp.status == 200:
+                        self.logger.debug("Instance %s: found the robots.txt", host)
+                        data = await resp.read()
+                    else:
+                        self.logger.warning(
+                            "Unknown error while fetching the robots.txt of Instance %s (code %d)",
+                            host,
+                            resp.status,
+                        )
+                        return (host, False)
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                self.logger.warning(
+                    "Unknown error while fetching the robots.txt of Instance %s: %s",
+                    host,
+                    str(err),
+                )
+                return (host, False)
 
-        if str(parser) == "":
-            self.logger.debug("Instance %s has no robots.txt", host)
+        parser = robotparser.RobotFileParser()
+        parser.parse(data.decode().splitlines())
 
         for url in self.API_ENDPOINTS:
             if not parser.can_fetch(self.USER_AGENT, url) or not parser.can_fetch(
                 self.USER_AGENT, url + "/"
             ):
-                raise CrawlerException(f"robots.txt of {host} disallows the crawl")
+                self.logger.debug("robots.txt of %s disallows the crawl", host)
+                return (host, False)
 
         req_rate = parser.request_rate(self.USER_AGENT)
         if req_rate is not None:
@@ -202,6 +225,8 @@ class Crawler:
 
         if host not in self.DELAY_PER_HOST:
             self.DELAY_PER_HOST[host] = DEFAULT_DELAY_BETWEEN_CONSECUTIVE_REQUESTS
+
+        return (host, True)
 
     def _get_crawl_delay(self, host):
         """Returns the crawl delay for a specific host."""
@@ -296,14 +321,19 @@ class Crawler:
         if not self.crawled_instances:
             raise CrawlerException("No URL to crawl")
 
+        tasks = [self._parse_robots_txt(url) for url in self.crawled_instances]
+
+        robots_results = await tqdm.gather(
+            *tasks,
+            desc=f"Analysing  the robots.txt for {self.SOFTWARE} ({self.CRAWL_SUBJECT})",
+        )
+
         allowed_crawled_instances = []
-        for host in self.crawled_instances:
-            try:
-                self._parse_robots_txt(host)  # Raise error if not allowed
+        for host, accepted in robots_results:
+            if accepted:
                 allowed_crawled_instances.append(host)
-            except CrawlerException as err:
-                err_msg = str(err)
-                self.logger.warning(err_msg)
+            else:
+                err_msg = "Crawling disallowed or problem while analysing robots.txt (see the logs)"
                 await self._write_instance_csv({"host": host, "error": err_msg})
 
         self.crawled_instances = allowed_crawled_instances
