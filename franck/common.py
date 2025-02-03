@@ -177,8 +177,11 @@ class Crawler:
         if not self.API_ENDPOINTS:
             raise ValueError("Invalid crawler: no API endpoint listed")
 
-        parser = robotparser.RobotFileParser(host)
+        parser = robotparser.RobotFileParser(f"https://{host}/robots.txt")
         parser.read()
+
+        if str(parser) == "":
+            self.logger.debug("Instance %s has no robots.txt", host)
 
         for url in self.API_ENDPOINTS:
             if not parser.can_fetch(self.USER_AGENT, url) or not parser.can_fetch(

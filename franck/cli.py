@@ -42,7 +42,8 @@ def main():
                 print("Start " + software)
                 try:
                     asyncio.run(launch_function())
-                except Exception:
+                except Exception as err:
+                    print(f"Fatal Error while crawling {software}: {str(err)}")
                     errors.append(software)
 
             if not errors:
