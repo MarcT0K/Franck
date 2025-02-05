@@ -214,11 +214,28 @@ class Crawler:
 
         req_rate = parser.request_rate(self.USER_AGENT)
         if req_rate is not None:
-            self.DELAY_PER_HOST[host] = req_rate.requests / req_rate.seconds
+            delay = req_rate.requests / req_rate.seconds
+            if delay > 600:
+                self.logger.warning(
+                    "Crawl delay is too high on Instance %s (delay: %f)",
+                    host,
+                    delay,
+                )
+                return (host, False)
+
+            self.DELAY_PER_HOST[host] = delay
 
         crawl_delay = parser.crawl_delay(self.USER_AGENT)
         if crawl_delay is not None:
             try:
+                if float(crawl_delay) > 600:
+                    self.logger.warning(
+                        "Crawl delay is too high on Instance %s (delay: %f)",
+                        host,
+                        crawl_delay,
+                    )
+                    return (host, False)
+
                 self.DELAY_PER_HOST[host] = float(crawl_delay)
             except ValueError:
                 pass  # Invalid format
