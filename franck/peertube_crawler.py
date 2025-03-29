@@ -52,22 +52,6 @@ class PeertubeCrawler(FederationCrawler):
             config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
             instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
 
-            # Fetch instance followers
-            # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1followers/get
-            followees_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/followers",
-            )
-            instance_dict["totalInstanceFollowers"] = followees_dict["total"]
-            for i in range(0, instance_dict["totalInstanceFollowers"], 100):
-                followers_dict = await self._fetch_json(
-                    "http://" + host + "/api/v1/server/followers",
-                    params={"count": 100, "start": i},
-                )
-                for link_dict in followers_dict["data"]:
-                    if link_dict["follower"]["host"] in self.crawled_instances:
-                        follower_links.append((link_dict["follower"]["host"], host))
-            instance_dict["totalPeertubeInstanceFollowers"] = str(len(follower_links))
-
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
             followees_dict = await self._fetch_json(
