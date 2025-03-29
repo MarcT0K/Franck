@@ -15,7 +15,6 @@ from urllib import robotparser
 
 import aiohttp
 import colorlog
-import pandas as pd
 import requests
 
 from aiohttp_retry import RetryClient, ListRetry
@@ -376,7 +375,6 @@ class Crawler:
             self.data_postprocessing()
             self.data_cleaning()
 
-            Crawler.compress_csv_files()
         except Exception as err:
             err_msg = str(err)
             self.logger.error("Crawl failed: %s", err_msg)
@@ -478,12 +476,6 @@ class Crawler:
                         dest in self.crawled_instances
                     ):  # Minimizes the cleaning necessary
                         writer.writerow({"Source": host, "Target": dest, "Weight": -1})
-
-    @staticmethod
-    def compress_csv_files():
-        for fname in glob.glob("*.csv"):
-            dataframe = pd.read_csv(fname)
-            dataframe.to_parquet(fname[:-4] + ".parquet")
 
 
 class FederationCrawler(Crawler):

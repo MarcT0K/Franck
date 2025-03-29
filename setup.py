@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="franck",
-    version="1.0.0",
+    version="1.0.1",
     url="https://github.com/MarcT0K/Franck",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
@@ -16,7 +16,6 @@ setup(
         "tqdm",
         "numpy<=1.26",  # Was creating an import error with pandas when importing the package
         "scipy",
-        "pandas",
         "fastparquet",
         "requests",
         "colorlog",
