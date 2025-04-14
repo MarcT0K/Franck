@@ -1,7 +1,6 @@
 "Base crawler classes"
 
 import asyncio
-import glob
 from io import TextIOWrapper
 import json
 import logging

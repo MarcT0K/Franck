@@ -1,4 +1,7 @@
 "Peertube graph crawler"
+import csv
+import os
+
 from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
 
@@ -84,6 +87,34 @@ class PeertubeCrawler(FederationCrawler):
         async with lock:
             for source, dest in follower_links:
                 writer.writerow({"Source": source, "Target": dest, "Weight": 1})
+
+    def data_postprocessing(
+        self,
+    ):  # A few instances generate duplicates for some unknwon reason...
+        seen_rows = set()
+        unique_rows = []
+
+        with open(
+            self.INTERACTIONS_CSVS[0], "r", newline="", encoding="utf-8"
+        ) as infile:
+            reader = csv.reader(infile)
+            header = next(reader, None)
+            if header:
+                unique_rows.append(header)
+                seen_rows.add(tuple(header))
+            for row in reader:
+                row_tuple = tuple(row)
+                if row_tuple not in seen_rows:
+                    unique_rows.append(row)
+                    seen_rows.add(row_tuple)
+
+        # Create a temporary file
+        with open("temp.csv", "w", newline="", encoding="utf-8") as tmpfile:
+            writer = csv.writer(tmpfile)
+            writer.writerows(unique_rows)
+
+        # Replace the original file with the temporary file
+        os.replace("temp.csv", self.INTERACTIONS_CSVS[0])
 
 
 async def launch_peertube_crawl():
