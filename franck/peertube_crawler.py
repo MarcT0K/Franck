@@ -20,10 +20,6 @@ class PeertubeCrawler(FederationCrawler):
         "totalMonthlyActiveUsers",
         "totalLocalVideos",
         "totalVideos",
-        "totalInstanceFollowers",
-        "totalPeertubeInstanceFollowers",
-        "totalInstanceFollowing",
-        "totalPeertubeInstanceFollowing",
         "totalLocalPlaylists",
         "totalVideoComments",
         "totalLocalVideoComments",
@@ -59,8 +55,7 @@ class PeertubeCrawler(FederationCrawler):
             followees_dict = await self._fetch_json(
                 "http://" + host + "/api/v1/server/following",
             )
-            instance_dict["totalInstanceFollowing"] = followees_dict["total"]
-            for i in range(0, instance_dict["totalInstanceFollowing"], 100):
+            for i in range(0, followees_dict["total"], 100):
                 followees_dict = await self._fetch_json(
                     "http://" + host + "/api/v1/server/following",
                     params={"count": 100, "start": i},
@@ -68,10 +63,6 @@ class PeertubeCrawler(FederationCrawler):
                 for link_dict in followees_dict["data"]:
                     if link_dict["follower"]["host"] in self.crawled_instances:
                         follower_links.append((host, link_dict["following"]["host"]))
-            instance_dict["totalPeertubeInstanceFollowing"] = str(
-                len(follower_links)
-                - int(instance_dict["totalPeertubeInstanceFollowers"])
-            )
 
         except CrawlerException as err:
             str_err = str(err)
