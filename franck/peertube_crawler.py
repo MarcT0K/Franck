@@ -4,6 +4,8 @@ from .common import CrawlerException, FederationCrawler, fetch_fediverse_instanc
 
 class PeertubeCrawler(FederationCrawler):
     SOFTWARE = "peertube"
+    CRAWL_SUBJECT = "follow"
+
     API_ENDPOINTS = [
         "/api/v1/server/following",
         "/api/v1/server/followers",
