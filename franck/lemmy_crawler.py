@@ -35,6 +35,7 @@ class LemmyFederationCrawler(FederationCrawler):
         "Id",
         "Label",
     ]
+    INCLUDE_BLOCKS = False
 
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
@@ -105,9 +106,17 @@ class LemmyFederationCrawler(FederationCrawler):
             instance_dict["error"] = str(err)
 
         await self._write_instance_csv(instance_dict)
-        await self._write_connected_instance(
-            host, connected_instances, blocked_instances
-        )
+        if self.INCLUDE_BLOCKS:
+            await self._write_connected_instance(
+                host, connected_instances, blocked_instances
+            )
+        else:
+            await self._write_connected_instance(host, connected_instances)
+
+
+class LemmyFederationWithBlocksCrawler(LemmyFederationCrawler):
+    CRAWL_SUBJECT = "federation_with_blocks"
+    INCLUDE_BLOCKS = True
 
 
 class LemmyCommunityCrawler(Crawler):
@@ -461,6 +470,9 @@ async def launch_lemmy_crawl():
     start_urls = await fetch_fediverse_instance_list("lemmy")
 
     async with LemmyFederationCrawler(start_urls) as crawler:
+        await crawler.launch()
+
+    async with LemmyFederationWithBlocksCrawler(start_urls) as crawler:
         await crawler.launch()
 
     async with LemmyCommunityCrawler(start_urls) as crawler:
