@@ -1,5 +1,7 @@
 "Peertube graph crawler"
+import asyncio
 import csv
+from typing import Dict, List, Union
 import os
 
 from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
@@ -17,6 +19,9 @@ class PeertubeCrawler(FederationCrawler):
     ]
     INSTANCES_CSV_FIELDS = [
         "host",
+        "languages",
+        "categories",
+        "categories",
         "totalUsers",
         "totalDailyActiveUsers",
         "totalWeeklyActiveUsers",
@@ -35,7 +40,7 @@ class PeertubeCrawler(FederationCrawler):
 
     async def inspect_instance(self, host: str):
         assert self.INSTANCES_CSV_FIELDS is not None
-        instance_dict = {"host": host}
+        instance_dict: Dict[str, Union[str, List[str]]] = {"host": host}
         follower_links = []
         try:
             # Fetch instance info
@@ -48,8 +53,18 @@ class PeertubeCrawler(FederationCrawler):
                 for key, val in info_dict.items()
                 if key in self.INSTANCES_CSV_FIELDS
             }
-            instance_dict.update(info_dict)
+            instance_categories_id = info_dict["categories"]
 
+            await asyncio.sleep(self._get_crawl_delay(host))
+            categories_dict = await self._fetch_json(
+                "http://" + host + "/api/v1/videos/categories/"
+            )
+            instance_dict["categories"] = [
+                categories_dict[category]
+                for category in instance_categories_id["categories_id"]
+            ]
+
+            await asyncio.sleep(self._get_crawl_delay(host))
             config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
             instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
 
@@ -59,6 +74,7 @@ class PeertubeCrawler(FederationCrawler):
                 "http://" + host + "/api/v1/server/following",
             )
             for i in range(0, followees_dict["total"], 100):
+                await asyncio.sleep(self._get_crawl_delay(host))
                 followees_dict = await self._fetch_json(
                     "http://" + host + "/api/v1/server/following",
                     params={"count": 100, "start": i},
