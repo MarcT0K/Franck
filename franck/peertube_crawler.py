@@ -16,12 +16,14 @@ class PeertubeCrawler(FederationCrawler):
         "/api/v1/server/followers",
         "/api/v1/server/stats",
         "/api/v1/config",
+        "/api/v1/config/about",
+        "/api/v1/videos/categories/",
     ]
+
     INSTANCES_CSV_FIELDS = [
         "host",
+        "categories",
         "languages",
-        "categories",
-        "categories",
         "totalUsers",
         "totalDailyActiveUsers",
         "totalWeeklyActiveUsers",
@@ -53,20 +55,25 @@ class PeertubeCrawler(FederationCrawler):
                 for key, val in info_dict.items()
                 if key in self.INSTANCES_CSV_FIELDS
             }
-            instance_categories_id = info_dict["categories"]
+
+            await asyncio.sleep(self._get_crawl_delay(host))
+            config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
+            instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
+
+            await asyncio.sleep(self._get_crawl_delay(host))
+            about_dict = await self._fetch_json(
+                "http://" + host + "/api/v1/config/about"
+            )
+            instance_dict["languages"] = about_dict["instance"]["languages"]
+            instance_categories_id = about_dict["instance"]["categories"]
 
             await asyncio.sleep(self._get_crawl_delay(host))
             categories_dict = await self._fetch_json(
                 "http://" + host + "/api/v1/videos/categories/"
             )
             instance_dict["categories"] = [
-                categories_dict[category]
-                for category in instance_categories_id["categories_id"]
+                categories_dict[str(category)] for category in instance_categories_id
             ]
-
-            await asyncio.sleep(self._get_crawl_delay(host))
-            config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
-            instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
 
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
