@@ -55,6 +55,7 @@ class PeertubeCrawler(FederationCrawler):
                 for key, val in info_dict.items()
                 if key in self.INSTANCES_CSV_FIELDS
             }
+            instance_dict.update(info_dict)
 
             await asyncio.sleep(self._get_crawl_delay(host))
             config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
