@@ -474,6 +474,7 @@ class LemmyCommunityCrawler(Crawler):
 
 async def launch_lemmy_crawl():
     start_urls = await fetch_fediverse_instance_list("lemmy")
+    # start_urls = ["lemmy.world", "lemmy.ml"]  # FOR DEBUGs
 
     async with LemmyFederationCrawler(start_urls) as crawler:
         await crawler.launch()

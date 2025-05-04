@@ -45,11 +45,11 @@ class MisskeyFederationCrawler(FederationCrawler):
             instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
             meta_dict = await self._fetch_json(
-                "https://" + host + "/api/meta", body={}, op="GET"
+                "https://" + host + "/api/meta", body={"detail": True}, op="POST"
             )
             instance_dict["languages"] = meta_dict["langs"]
             instance_dict["description_language"] = self._detect_language(
-                meta_dict["desc"]
+                meta_dict["description"]
             )
 
             offset = 0
@@ -207,11 +207,11 @@ class MisskeyActiveUserCrawler(Crawler):
             instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
             meta_dict = await self._fetch_json(
-                "https://" + host + "/api/meta", body={}, op="GET"
+                "https://" + host + "/api/meta", body={}, op="POST"
             )
             instance_dict["languages"] = meta_dict["langs"]
             instance_dict["description_language"] = self._detect_language(
-                meta_dict["desc"]
+                meta_dict["description"]
             )
         except Exception as err:
             instance_dict["error"] = str(err)

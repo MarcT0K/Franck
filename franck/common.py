@@ -250,7 +250,7 @@ class Crawler:
         if detected_languages[0].prob > self.LANGUAGE_DETECTION_THRESHOLD:
             return detected_languages[0].lang
         else:
-            return "Unknown"
+            return "unknown"
 
     def _get_crawl_delay(self, host):
         """Returns the crawl delay for a specific host."""
