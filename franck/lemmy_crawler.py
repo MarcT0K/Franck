@@ -25,6 +25,7 @@ class LemmyFederationCrawler(FederationCrawler):
         "posts",
         "comments",
         "communities",
+        "description_language",
         "users_active_day",
         "users_active_week",
         "users_active_month",
@@ -52,7 +53,9 @@ class LemmyFederationCrawler(FederationCrawler):
                     if key in self.INSTANCES_CSV_FIELDS
                 }
             )
-
+            instance_dict["description_language"] = self._detect_language(
+                info_dict["site_view"]["site"]["sidebar"]
+            )
             instance_dict["version"] = info_dict["version"]
 
             if "local_site" not in info_dict["site_view"]:  # For older API versions
@@ -131,6 +134,7 @@ class LemmyCommunityCrawler(Crawler):
         "posts",
         "comments",
         "communities",
+        "description_language",
         "users_active_day",
         "users_active_week",
         "users_active_month",
@@ -229,7 +233,9 @@ class LemmyCommunityCrawler(Crawler):
                     if key in self.INSTANCES_CSV_FIELDS
                 }
             )
-
+            instance_dict["description_language"] = self._detect_language(
+                info_dict["site_view"]["site"]["sidebar"]
+            )
             instance_dict["version"] = info_dict["version"]
 
             if "local_site" not in info_dict["site_view"]:  # For older API versions

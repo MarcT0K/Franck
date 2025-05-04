@@ -14,11 +14,17 @@ from .common import (
 
 class MisskeyFederationCrawler(FederationCrawler):
     SOFTWARE = "misskey"
-    API_ENDPOINTS = ["/api/federation/instances", "/api/stats"]
+    API_ENDPOINTS = [
+        "/api/federation/instances",
+        "/api/stats",
+        "/api/meta",
+    ]
     INSTANCES_CSV_FIELDS = [
         "host",
         "users_count",
         "posts_count",
+        "languages",
+        "description_language",
         "error",
         "Id",
         "Label",
@@ -37,6 +43,14 @@ class MisskeyFederationCrawler(FederationCrawler):
             )
             instance_dict["users_count"] = stats_dict["originalUsersCount"]
             instance_dict["posts_count"] = stats_dict["originalNotesCount"]
+
+            meta_dict = await self._fetch_json(
+                "https://" + host + "/api/meta", body={}, op="GET"
+            )
+            instance_dict["languages"] = meta_dict["langs"]
+            instance_dict["description_language"] = self._detect_language(
+                meta_dict["desc"]
+            )
 
             offset = 0
             while True:
@@ -80,12 +94,14 @@ class MisskeyFederationCrawler(FederationCrawler):
 class MisskeyActiveUserCrawler(Crawler):
     SOFTWARE = "misskey"
     CRAWL_SUBJECT = "active_user"
-    API_ENDPOINTS = ["/api/stats", "/api/users", "/api/users/following"]
+    API_ENDPOINTS = ["/api/stats", "/api/users", "/api/users/following", "/api/meta"]
 
     INSTANCES_CSV_FIELDS = [
         "host",
         "users_count",
         "posts_count",
+        "languages",
+        "description_language",
         "error",
         "Id",
         "Label",
@@ -190,6 +206,13 @@ class MisskeyActiveUserCrawler(Crawler):
             instance_dict["users_count"] = stats_dict["originalUsersCount"]
             instance_dict["posts_count"] = stats_dict["originalNotesCount"]
 
+            meta_dict = await self._fetch_json(
+                "https://" + host + "/api/meta", body={}, op="GET"
+            )
+            instance_dict["languages"] = meta_dict["langs"]
+            instance_dict["description_language"] = self._detect_language(
+                meta_dict["desc"]
+            )
         except Exception as err:
             instance_dict["error"] = str(err)
 

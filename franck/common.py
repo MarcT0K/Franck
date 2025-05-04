@@ -17,6 +17,7 @@ import colorlog
 import requests
 
 from aiohttp_retry import RetryClient, ListRetry
+from langdetect import detect_langs
 from tqdm.asyncio import tqdm
 
 import franck
@@ -60,6 +61,7 @@ class Crawler:
     SOFTWARE: Optional[str] = None
     CRAWL_SUBJECT: Optional[str] = None
     NB_SEMAPHORE: int = 100
+    LANGUAGE_DETECTION_THRESHOLD = 0.7
 
     DELAY_PER_HOST: Dict[str, float] = {}
 
@@ -242,6 +244,13 @@ class Crawler:
             self.DELAY_PER_HOST[host] = DEFAULT_DELAY_BETWEEN_CONSECUTIVE_REQUESTS
 
         return (host, True)
+
+    def _detect_language(self, text: str) -> str:
+        detected_languages = detect_langs(text)
+        if detected_languages[0].prob > self.LANGUAGE_DETECTION_THRESHOLD:
+            return detected_languages[0].lang
+        else:
+            return "Unknown"
 
     def _get_crawl_delay(self, host):
         """Returns the crawl delay for a specific host."""

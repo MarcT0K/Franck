@@ -14,6 +14,7 @@ class BookwyrmFederationCrawler(FederationCrawler):
         "host",
         "version",
         "registration_enabled",
+        "description_language",
         "error",
         "Id",
         "Label",
@@ -25,6 +26,9 @@ class BookwyrmFederationCrawler(FederationCrawler):
         connected_instances = []
         try:
             info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
+            instance_dict["description_language"] = self._detect_language(
+                info_dict["description"]
+            )
             instance_dict["version"] = info_dict["version"]
             instance_dict["registration_enabled"] = info_dict["registrations"]
 

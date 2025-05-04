@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="franck",
-    version="1.0.3",
+    version="1.0.4",
     url="https://github.com/MarcT0K/Franck",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",
@@ -19,6 +19,7 @@ setup(
         "fastparquet",
         "requests",
         "colorlog",
+        "langdetect",
     ],
     entry_points={
         "console_scripts": [
