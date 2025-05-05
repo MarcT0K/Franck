@@ -246,6 +246,9 @@ class Crawler:
         return (host, True)
 
     def _detect_language(self, text: str) -> str:
+        if len(text) == 0:
+            return "unknown"
+
         detected_languages = detect_langs(text)
         if detected_languages[0].prob > self.LANGUAGE_DETECTION_THRESHOLD:
             return detected_languages[0].lang
@@ -385,7 +388,7 @@ class Crawler:
 
         except Exception as err:
             err_msg = str(err)
-            self.logger.error("Crawl failed: %s", err_msg)
+            self.logger.error("Crawl failed: %s (%s)", err_msg, str(type(err)))
             os.chdir("../")
             raise err
         self.logger.info("Done.")

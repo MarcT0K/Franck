@@ -54,7 +54,7 @@ class LemmyFederationCrawler(FederationCrawler):
                 }
             )
             instance_dict["description_language"] = self._detect_language(
-                info_dict["site_view"]["site"]["sidebar"]
+                info_dict["site_view"]["site"].get("description", "")
             )
             instance_dict["version"] = info_dict["version"]
 
@@ -234,7 +234,7 @@ class LemmyCommunityCrawler(Crawler):
                 }
             )
             instance_dict["description_language"] = self._detect_language(
-                info_dict["site_view"]["site"]["sidebar"]
+                info_dict["site_view"]["site"].get("description", "")
             )
             instance_dict["version"] = info_dict["version"]
 
