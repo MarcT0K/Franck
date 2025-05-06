@@ -17,7 +17,7 @@ import colorlog
 import requests
 
 from aiohttp_retry import RetryClient, ListRetry
-from langdetect import detect_langs
+from langdetect import detect_langs, LangDetectException
 from tqdm.asyncio import tqdm
 
 import franck
@@ -246,10 +246,11 @@ class Crawler:
         return (host, True)
 
     def _detect_language(self, text: str) -> str:
-        if not text:
+        try:
+            detected_languages = detect_langs(text)
+        except LangDetectException:  # Due to empty strings
             return "unknown"
 
-        detected_languages = detect_langs(text)
         if detected_languages[0].prob > self.LANGUAGE_DETECTION_THRESHOLD:
             return detected_languages[0].lang
         else:
