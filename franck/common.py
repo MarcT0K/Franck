@@ -215,7 +215,7 @@ class Crawler:
         req_rate = parser.request_rate(self.USER_AGENT)
         if req_rate is not None:
             delay = req_rate.requests / req_rate.seconds
-            if delay > 60:
+            if delay > 30:
                 self.logger.warning(
                     "Crawl delay is too high on Instance %s (delay: %f)",
                     host,
