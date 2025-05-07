@@ -246,6 +246,9 @@ class Crawler:
         return (host, True)
 
     def _detect_language(self, text: str) -> str:
+        if not text:
+            return "unknown"
+
         try:
             detected_languages = detect_langs(text)
         except LangDetectException:  # Due to empty strings
