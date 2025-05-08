@@ -1,51 +1,32 @@
 # Franck, the Fediverse graph crawler
 
-This repository contains a Python script to crawl various social media from the Fediverse. Our tool represent the dynamics existing between the Fediverse servers. These dynamics are represented using different graphs.
+This repository contains a Python script to crawl various social media from the Fediverse. Our tool represent the interactions dynamics between the Fediverse servers. These dynamics are represented using different graphs.
 
 Currently, `franck` is able to crawl Bookwyrm, Mastodon, Friendica, Misskey, Peertube, Pleroma/Akkoma, and Lemmy.
 Our tool **only queries public APIs.**
 Moreover, our implementation includes some **load balancing** (e.g., maximum 5 queries per second and per Fediverse instance).
 Our goal is to crawl the Fediverse while respecting its philosophy and minimizing our impact.
 
-As detailed in [DOCS.md](DOCS.md), our crawling approach is targeted to minimize the number of queries necessary.
+Our crawling approach is targeted to minimize the number of queries necessary.
 As much as possible, we rely on aggregated information provided by the servers.
 When such aggregated information is not available, we sample information (e.g., analyze the most active users or the most recently active threads).
 This sampling significantly reduces the number of queries and is sufficient to represent the Fediverse dynamics.
 
+Refer to our research paper for a formal presentation of each graph (and of the whole research project): [TODO] 
+
+## Graph dataset: Fedivertex
+
+We built a graph dataset using our crawlers: https://www.kaggle.com/datasets/marcdamie/fediverse-graph-dataset .
+This Kaggle page presents more thoroughly the dataset and how to interact with it.
+Our graphs contain only aggregated information about the servers (i.e., **reveal no personal information about the users**).
+
 ## Research purpose
 
-We are researchers in privacy-preserving Machine Learning (ML).
-This scientific literature has attracted a lot of attention lately, especially decentralized ML protocols.
-Currently, the scientific literature relies on historical graph datasets (e.g., interactions between users on a social media).
-Unfortunately, these graphs do not represent realistic interactions between servers involved in decentralized ML.
-Our goal is to build a novel graph dataset representing the interactions between the servers hosting decentralized social networks; i.e., the "Fediverse."
+We are researchers in privacy-preserving machine learning (ML), a field that has recently attracted significant attention, particularly in decentralized ML protocols. Currently, the scientific literature relies on historical graph datasets, such as social media user interactions, which fail to accurately represent the interactions between servers in decentralized ML systems. To address this gap, our goal is to create a novel graph dataset that captures the interactions between servers hosting decentralized social networks—specifically, the Fediverse.
 
-Moreover, we will repeat the crawling procedure during several months to observe the temporal evolution.
-Existing graphs datasets do not incorporate a temporal evolution, while such evolutions can have major impact in decentralized ML.
-Thus, our project provides the first graph dataset with a realistic temporal evolution.
+Beyond advancing ML research, this dataset could have broader benefits for the Fediverse itself. At present, the Fediverse is often overlooked as a valuable domain for ML applications. By increasing its visibility, our work could spur the development of useful ML systems, such as federated spam detection or content recommendation tools.
 
-Finally, producing a dataset about the Fediverse could have positive consequences on the Fediverse.
-Currently, the Fediverse is not seen as a valuable application area for ML research.
-Our dataset could bring some visibility to the Fediverse and some valuable ML systems may emerge (e.g., federated spam detection or content recommendation).
-
-While our research focuses on privacy-preserving ML, our graphs could also find unforeseen applications in other research fields such as sociology.
-However, our scientific background does not allow us to assess their relevance in such research fields.
-
-## Fediverse graphs
-
-Our graphs represent interactions between the servers.
-If Server A and Server B interact, they have an edge connecting them on the graph.
-Some graphs are weighted, each edge has a value defining how strong the interaction is.
-For each software, we have a different definition of the interaction.
-For example, an interaction can be simply that the servers are connected (like on Peertube) or  an interaction can be a user from Server A following a user from server B (like on Mastodon).
-[DOCS.md](DOCS.md) details all the graphs built by `franck`.
-
-Our graphs contain only aggregated information about the servers.
-Thus, our graphs **reveal no personal information about the users**.
-
-We output CSV and parquet files.
-The format of the CSV files storing the graphs is compatible with [Gephi](https://gephi.org/) (a graph visualization software).
-Thus, our results can directly be visualized after the crawl.
+Although our primary focus is privacy-preserving ML, our graph dataset may also find unexpected applications in other fields, such as sociology. That said, given our scientific background, we cannot fully assess its potential impact in these areas.
 
 ## Getting started
 
