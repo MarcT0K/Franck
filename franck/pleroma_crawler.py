@@ -19,7 +19,6 @@ class PleromaActiveUserCrawler(MastodonActiveUserCrawler):
 async def launch_pleroma_crawl():
     start_urls = await fetch_fediverse_instance_list("pleroma")
     start_urls += await fetch_fediverse_instance_list("akkoma")
-    # start_urls = ["poa.st", "spinster.xyz", "fe.disroot.org"]  # FOR DEBUG
 
     async with PleromaFederationCrawler(start_urls) as crawler:
         await crawler.launch()

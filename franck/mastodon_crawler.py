@@ -354,7 +354,6 @@ class MastodonActiveUserCrawler(Crawler):
 
 async def launch_mastodon_crawl():
     start_urls = await fetch_fediverse_instance_list("mastodon")
-    # start_urls = ["mastodon.social", "mastodon.acm.org"]  # FOR DEBUG
 
     async with MastodonFederationCrawler(start_urls) as crawler:
         await crawler.launch()
