@@ -25,3 +25,10 @@ async def launch_pleroma_crawl():
 
     async with PleromaActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
+
+async def launch_pleroma_federation_crawl():
+    start_urls = await fetch_fediverse_instance_list("pleroma")
+    start_urls += await fetch_fediverse_instance_list("akkoma")
+
+    async with PleromaFederationCrawler(start_urls) as crawler:
+        await crawler.launch()

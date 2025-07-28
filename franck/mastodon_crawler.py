@@ -360,3 +360,10 @@ async def launch_mastodon_crawl():
 
     async with MastodonActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
+
+async def launch_mastodon_federation_crawl():
+    start_urls = await fetch_fediverse_instance_list("mastodon")
+
+    async with MastodonFederationCrawler(start_urls) as crawler:
+        await crawler.launch()
+

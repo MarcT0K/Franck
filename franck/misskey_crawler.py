@@ -339,3 +339,9 @@ async def launch_misskey_crawl():
 
     async with MisskeyActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
+
+async def launch_misskey_federation_crawl():
+    start_urls = await fetch_fediverse_instance_list("misskey")
+
+    async with MisskeyFederationCrawler(start_urls) as crawler:
+        await crawler.launch()
