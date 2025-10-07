@@ -340,7 +340,12 @@ class Crawler:
 
     async def __inspect_instance_with_logging(self, url):
         self.logger.debug("Start inspecting instance %s", url)
-        await self.inspect_instance(url)
+        try:
+            await self.inspect_instance(url)
+        except Exception as err:
+            err_msg = str(err)
+            self.logger.error("Critical error while crawling %s: %s (%s)", url, err_msg, str(type(err)))
+            raise err
         self.logger.debug("Finished inspecting instance %s", url)
 
     async def launch(self):

@@ -88,6 +88,13 @@ class LemmyFederationCrawler(FederationCrawler):
                     connected_instances = info_dict["federated_instances"]["linked"]
                 if info_dict["federated_instances"]["blocked"] is not None:
                     blocked_instances = info_dict["federated_instances"]["blocked"]
+                
+                for instance in connected_instances:
+                    # A single instance started to diverge from the standard API so we ignore it
+                    if type(instance) != str:
+                        connected_instances = []
+                        blocked_instances = []
+                        raise CrawlerException("Invalid format for the federated instances")
             else:
                 if info_dict["site_view"]["local_site"]["federation_enabled"]:
                     instances_resp = await self._fetch_json(
