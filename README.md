@@ -12,7 +12,7 @@ As much as possible, we rely on aggregated information provided by the servers.
 When such aggregated information is not available, we sample information (e.g., analyze the most active users or the most recently active threads).
 This sampling significantly reduces the number of queries and is sufficient to represent the Fediverse dynamics.
 
-Refer to our research paper for a formal presentation of each graph (and of the whole research project): [TODO] 
+Refer to our research paper for a formal presentation of each graph (and of the whole research project): https://arxiv.org/abs/2505.20882
 
 ## Graph dataset: Fedivertex
 
