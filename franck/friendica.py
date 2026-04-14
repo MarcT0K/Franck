@@ -38,6 +38,9 @@ class FriendicaFederationCrawler(FederationCrawler):
 
         except CrawlerException as err:
             instance_dict["error"] = str(err)
+        except KeyError as err:
+            error_msg = f"Missing information for {host} ({err})"
+            instance_dict["error"] = error_msg
 
         await self._write_instance_csv(instance_dict)
         await self._write_connected_instance(host, connected_instances)
