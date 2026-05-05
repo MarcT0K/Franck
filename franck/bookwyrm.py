@@ -25,7 +25,7 @@ class BookwyrmFederationCrawler(FederationCrawler):
         instance_dict = {"host": host}
         connected_instances = []
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
+            info_dict = await self._fetch_json("https://" + host + "/api/v1/instance")
             instance_dict["description_language"] = self._detect_language(
                 info_dict["description"]
             )
@@ -33,7 +33,7 @@ class BookwyrmFederationCrawler(FederationCrawler):
             instance_dict["registration_enabled"] = info_dict["registrations"]
 
             connected_instances = list(
-                await self._fetch_json("http://" + host + "/api/v1/instance/peers")
+                await self._fetch_json("https://" + host + "/api/v1/instance/peers")
             )
 
         except CrawlerException as err:

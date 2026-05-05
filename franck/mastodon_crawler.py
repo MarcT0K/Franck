@@ -3,8 +3,7 @@
 import asyncio
 import json
 import re
-
-from csv import DictWriter, DictReader
+from csv import DictReader, DictWriter
 from typing import Any, Dict, Optional, Tuple
 
 import aiohttp
@@ -39,7 +38,7 @@ class MastodonFederationCrawler(FederationCrawler):
         # blocked_instances = []
 
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
+            info_dict = await self._fetch_json("https://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
             instance_dict["users"] = info_dict["stats"]["user_count"]
             instance_dict["statuses"] = info_dict["stats"]["status_count"]
@@ -47,10 +46,10 @@ class MastodonFederationCrawler(FederationCrawler):
             instance_dict["registration_enabled"] = info_dict["registrations"]
 
             connected_instances = await self._fetch_json(
-                "http://" + host + "/api/v1/instance/peers"
+                "https://" + host + "/api/v1/instance/peers"
             )
             # blocked_instances = await self._fetch_json(
-            #     "http://" + host + "/api/v1/instance/domain_blocks"
+            #     "https://" + host + "/api/v1/instance/domain_blocks"
             # ) # Not always publicly available => removed for consistency
         except CrawlerException as err:
             instance_dict["error"] = str(err)
@@ -209,7 +208,7 @@ class MastodonActiveUserCrawler(Crawler):
     async def _fetch_instance_info(self, host):
         instance_dict = {"host": host}
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
+            info_dict = await self._fetch_json("https://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
             instance_dict["users"] = info_dict["stats"]["user_count"]
             instance_dict["statuses"] = info_dict["stats"]["status_count"]
@@ -361,9 +360,9 @@ async def launch_mastodon_crawl():
     async with MastodonActiveUserCrawler(start_urls) as crawler:
         await crawler.launch()
 
+
 async def launch_mastodon_federation_crawl():
     start_urls = await fetch_fediverse_instance_list("mastodon")
 
     async with MastodonFederationCrawler(start_urls) as crawler:
         await crawler.launch()
-

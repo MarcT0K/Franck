@@ -1,8 +1,9 @@
 "Peertube graph crawler"
+
 import asyncio
 import csv
-from typing import Dict, List, Union
 import os
+from typing import Dict, List, Union
 
 from .common import CrawlerException, FederationCrawler, fetch_fediverse_instance_list
 
@@ -48,7 +49,7 @@ class PeertubeCrawler(FederationCrawler):
             # Fetch instance info
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Stats/operation/getInstanceStats
             info_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/stats"
+                "https://" + host + "/api/v1/server/stats"
             )
             info_dict = {
                 key: val
@@ -58,19 +59,19 @@ class PeertubeCrawler(FederationCrawler):
             instance_dict.update(info_dict)
 
             await asyncio.sleep(self._get_crawl_delay(host))
-            config_dict = await self._fetch_json("http://" + host + "/api/v1/config")
+            config_dict = await self._fetch_json("https://" + host + "/api/v1/config")
             instance_dict["serverVersion"] = config_dict.get("serverVersion", "None")
 
             await asyncio.sleep(self._get_crawl_delay(host))
             about_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/config/about"
+                "https://" + host + "/api/v1/config/about"
             )
             instance_dict["languages"] = about_dict["instance"]["languages"]
             instance_categories_id = about_dict["instance"]["categories"]
 
             await asyncio.sleep(self._get_crawl_delay(host))
             categories_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/videos/categories/"
+                "https://" + host + "/api/v1/videos/categories/"
             )
             instance_dict["categories"] = [
                 categories_dict[str(category)] for category in instance_categories_id
@@ -79,12 +80,12 @@ class PeertubeCrawler(FederationCrawler):
             # Fetch instance followees
             # https://docs.joinpeertube.org/api-rest-reference.html#tag/Instance-Follows/paths/~1api~1v1~1server~1following/get
             followees_dict = await self._fetch_json(
-                "http://" + host + "/api/v1/server/following",
+                "https://" + host + "/api/v1/server/following",
             )
             for i in range(0, followees_dict["total"], 100):
                 await asyncio.sleep(self._get_crawl_delay(host))
                 followees_dict = await self._fetch_json(
-                    "http://" + host + "/api/v1/server/following",
+                    "https://" + host + "/api/v1/server/following",
                     params={"count": 100, "start": i},
                 )
                 for link_dict in followees_dict["data"]:

@@ -1,8 +1,8 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="franck",
-    version="1.0.9",
+    version="1.1.0",
     url="https://github.com/MarcT0K/Franck",
     author="Marc DAMIE",
     author_email="marc.damie@inria.fr",

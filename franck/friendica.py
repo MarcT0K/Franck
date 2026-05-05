@@ -26,14 +26,14 @@ class FriendicaFederationCrawler(FederationCrawler):
         instance_dict = {"host": host}
         connected_instances = []
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v1/instance")
+            info_dict = await self._fetch_json("https://" + host + "/api/v1/instance")
             instance_dict["version"] = info_dict["version"]
             instance_dict["users"] = info_dict["stats"]["user_count"]
             instance_dict["statuses"] = info_dict["stats"]["status_count"]
             instance_dict["registration_enabled"] = info_dict["registrations"]
 
             connected_instances = list(
-                await self._fetch_json("http://" + host + "/api/v1/instance/peers")
+                await self._fetch_json("https://" + host + "/api/v1/instance/peers")
             )
 
         except CrawlerException as err:

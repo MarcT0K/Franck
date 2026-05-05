@@ -1,9 +1,8 @@
 "Lemmy graph crawlers"
 
 import asyncio
-
-from csv import DictReader
 import urllib.parse
+from csv import DictReader
 
 import scipy.sparse as sp
 
@@ -45,7 +44,7 @@ class LemmyFederationCrawler(FederationCrawler):
         blocked_instances = []
 
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v3/site")
+            info_dict = await self._fetch_json("https://" + host + "/api/v3/site")
             instance_dict.update(
                 {
                     key: val
@@ -88,17 +87,19 @@ class LemmyFederationCrawler(FederationCrawler):
                     connected_instances = info_dict["federated_instances"]["linked"]
                 if info_dict["federated_instances"]["blocked"] is not None:
                     blocked_instances = info_dict["federated_instances"]["blocked"]
-                
+
                 for instance in connected_instances:
                     # A single instance started to diverge from the standard API so we ignore it
                     if type(instance) != str:
                         connected_instances = []
                         blocked_instances = []
-                        raise CrawlerException("Invalid format for the federated instances")
+                        raise CrawlerException(
+                            "Invalid format for the federated instances"
+                        )
             else:
                 if info_dict["site_view"]["local_site"]["federation_enabled"]:
                     instances_resp = await self._fetch_json(
-                        "http://" + host + "/api/v3/federated_instances",
+                        "https://" + host + "/api/v3/federated_instances",
                     )
 
                     federated_instances = instances_resp["federated_instances"]
@@ -232,7 +233,7 @@ class LemmyCommunityCrawler(Crawler):
         instance_dict = {"host": host}
 
         try:
-            info_dict = await self._fetch_json("http://" + host + "/api/v3/site")
+            info_dict = await self._fetch_json("https://" + host + "/api/v3/site")
             instance_dict.update(
                 {
                     key: val
@@ -286,7 +287,7 @@ class LemmyCommunityCrawler(Crawler):
                 "sort": self.activity_scope,
             }
             resp = await self._fetch_json(
-                "http://" + host + "/api/v3/community/list", params=params
+                "https://" + host + "/api/v3/community/list", params=params
             )
 
             if not resp["communities"]:
@@ -350,7 +351,7 @@ class LemmyCommunityCrawler(Crawler):
                 "community_name": community,
             }
             resp = await self._fetch_json(
-                "http://" + host + "/api/v3/post/list", params=params
+                "https://" + host + "/api/v3/post/list", params=params
             )
 
             if not resp["posts"]:
@@ -490,6 +491,7 @@ async def launch_lemmy_crawl():
 
     async with LemmyCommunityCrawler(start_urls) as crawler:
         await crawler.launch()
+
 
 async def launch_lemmy_federation_crawl():
     start_urls = await fetch_fediverse_instance_list("lemmy")

@@ -1,23 +1,21 @@
 "Base crawler classes"
 
 import asyncio
-from io import TextIOWrapper
 import json
 import logging
 import os
-
 from abc import abstractmethod
 from csv import DictReader, DictWriter
 from datetime import datetime
+from io import TextIOWrapper
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 from urllib import robotparser
 
 import aiohttp
 import colorlog
 import requests
-
-from aiohttp_retry import RetryClient, ListRetry
-from langdetect import detect_langs, LangDetectException
+from aiohttp_retry import ListRetry, RetryClient
+from langdetect import LangDetectException, detect_langs
 from tqdm.asyncio import tqdm
 
 import franck
@@ -128,7 +126,7 @@ class Crawler:
         # Initialize HTTP session
         aiohttp_session = aiohttp.ClientSession(headers={"User-Agent": self.USER_AGENT})
         retry_options = ListRetry(
-            timeouts=[30, 60, 180, 300, 600],
+            timeouts=[5, 15, 30, 60],
             statuses={429},
             retry_all_server_errors=True,
         )
@@ -180,7 +178,7 @@ class Crawler:
         robots_url = f"https://{host}/robots.txt"
         async with self.concurrent_connection_sem:
             try:
-                async with self.session.get(robots_url, timeout=180) as resp:
+                async with self.session.get(robots_url, timeout=60) as resp:
                     if resp.status == 404:
                         self.logger.debug("Instance %s has no robots.txt", host)
                         return (host, True)
@@ -304,9 +302,10 @@ class Crawler:
 
         # Remove the unreachable instances
         working_instances = set()
-        with open(self.INSTANCES_CSV, encoding="utf-8") as rawfile, open(
-            "clean_" + self.INSTANCES_CSV, "w", encoding="utf-8"
-        ) as cleanfile:
+        with (
+            open(self.INSTANCES_CSV, encoding="utf-8") as rawfile,
+            open("clean_" + self.INSTANCES_CSV, "w", encoding="utf-8") as cleanfile,
+        ):
             data = DictReader(rawfile)
             assert self.INSTANCES_CSV_FIELDS is not None
             writer = DictWriter(cleanfile, fieldnames=self.INSTANCES_CSV_FIELDS)
@@ -322,9 +321,10 @@ class Crawler:
         os.rename("clean_" + self.INSTANCES_CSV, self.INSTANCES_CSV)
 
         for interaction_file in self.INTERACTIONS_CSVS:
-            with open(interaction_file, encoding="utf-8") as rawfile, open(
-                "clean_" + interaction_file, "w", encoding="utf-8"
-            ) as cleanfile:
+            with (
+                open(interaction_file, encoding="utf-8") as rawfile,
+                open("clean_" + interaction_file, "w", encoding="utf-8") as cleanfile,
+            ):
                 data = DictReader(rawfile)
                 writer = DictWriter(cleanfile, fieldnames=self.INTERACTIONS_CSV_FIELDS)
                 writer.writeheader()
@@ -344,7 +344,12 @@ class Crawler:
             await self.inspect_instance(url)
         except Exception as err:
             err_msg = str(err)
-            self.logger.error("Critical error while crawling %s: %s (%s)", url, err_msg, str(type(err)))
+            self.logger.error(
+                "Critical error while crawling %s: %s (%s)",
+                url,
+                err_msg,
+                str(type(err)),
+            )
             raise err
         self.logger.debug("Finished inspecting instance %s", url)
 
